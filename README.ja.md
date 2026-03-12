@@ -21,6 +21,43 @@ go run ./cmd/composepilot -listen :8080 -data-dir ./data -workspace ./workspace
 
 ComposePilot は、リポジトリ直下に `.env` があれば自動で読み込みます。
 
+## GitHub Releases から一発でインストールする
+Linux / macOS では、次のワンライナーでインストールできます。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/shunsukeaihara/ComposePilot/main/install.sh | sudo sh
+```
+
+このスクリプトは次を行います。
+- 現在の OS / arch に合う最新 Release バイナリをダウンロード
+- `composepilot` を `/usr/local/bin` に配置
+- 必要なら master key を生成
+- Linux では `systemd` サービスを登録して起動
+- macOS では `launchd` サービスを登録して起動
+
+バージョンや listen アドレスを固定したい場合:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/shunsukeaihara/ComposePilot/main/install.sh | \
+  sudo COMPOSEPILOT_VERSION=v0.1.0 COMPOSEPILOT_LISTEN=:9090 sh
+```
+
+installer script で指定できる変数と既定値:
+
+| 変数 | Linux の既定値 | macOS の既定値 |
+| --- | --- | --- |
+| `COMPOSEPILOT_VERSION` | 最新 Release tag | 最新 Release tag |
+| `COMPOSEPILOT_LISTEN` | `:8080` | `:8080` |
+| `COMPOSEPILOT_BIN_DIR` | `/usr/local/bin` | `/usr/local/bin` |
+| `COMPOSEPILOT_CONFIG_DIR` | `/etc/composepilot` | `/usr/local/etc/composepilot` |
+| `COMPOSEPILOT_DATA_DIR` | `/var/lib/composepilot` | `/usr/local/var/lib/composepilot` |
+| `COMPOSEPILOT_WORKSPACE_DIR` | `${COMPOSEPILOT_DATA_DIR}/workspace` | `${COMPOSEPILOT_DATA_DIR}/workspace` |
+
+補足:
+- SQLite の DB パスは `${COMPOSEPILOT_DATA_DIR}/composepilot.db` 固定です
+- master key file は `${COMPOSEPILOT_CONFIG_DIR}/master_key` 固定です
+- environment file は `${COMPOSEPILOT_CONFIG_DIR}/composepilot.env` 固定です
+
 ## air で自動再起動する
 1. `air` をインストールします。
 
@@ -67,6 +104,8 @@ make dist VERSION=0.1.0
 git tag v0.1.0
 git push origin v0.1.0
 ```
+
+installer script は既定で最新 Release を参照し、`COMPOSEPILOT_VERSION` を指定した場合はそのバージョンを取得します。
 
 ## 本番環境での鍵の渡し方
 推奨順は以下です。
