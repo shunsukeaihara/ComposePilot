@@ -1,0 +1,12 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/composepilot ./cmd/composepilot"
+bin = "./tmp/composepilot"
+full_bin = "./tmp/composepilot -listen :8080 -data-dir ./data -workspace ./workspace"
+include_ext = ["go", "html", "gohtml", "toml", "env"]
+exclude_dir = ["tmp", "data", "workspace", "dist", "samples"]
+
+[log]
+time = true

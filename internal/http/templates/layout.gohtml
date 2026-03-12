@@ -1,0 +1,1236 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}}</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+  <script type="module">
+    import { Terminal } from 'https://esm.sh/@xterm/xterm@5.5.0';
+    import { FitAddon } from 'https://esm.sh/@xterm/addon-fit@0.10.0';
+    window.ComposePilotXterm = { Terminal, FitAddon };
+    window.dispatchEvent(new Event('composepilot:xterm-ready'));
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1120;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --panel-3: #0f172a;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #334155;
+      --accent: #2563eb;
+      --accent-2: #1d4ed8;
+      --danger: #dc2626;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --radius-sm: 10px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --panel-padding: 18px;
+      --surface-padding: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+    button, input, textarea, select { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    .app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .site-header-wrap {
+      flex: 0 0 auto;
+      z-index: 20;
+    }
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 56px;
+      padding: 0 var(--panel-padding);
+      width: 100%;
+      border-bottom: 1px solid var(--border);
+      background: rgba(17, 24, 39, 0.98);
+      backdrop-filter: blur(8px);
+    }
+    .site-header-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      min-width: 0;
+    }
+    .menu-toggle {
+      display: none;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .menu-toggle-icon {
+      position: relative;
+      width: 18px;
+      height: 12px;
+      display: inline-block;
+    }
+    .menu-toggle-icon::before,
+    .menu-toggle-icon::after,
+    .menu-toggle-icon span {
+      content: "";
+      position: absolute;
+      left: 0;
+      width: 18px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+    .menu-toggle-icon::before { top: 0; }
+    .menu-toggle-icon span { top: 5px; }
+    .menu-toggle-icon::after { bottom: 0; }
+    .menu-toggle:hover {
+      background: rgba(148, 163, 184, 0.12);
+    }
+    .app-body {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      flex: 1;
+      overflow: hidden;
+    }
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: var(--panel);
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      min-height: 0;
+      overflow: auto;
+    }
+    .sidebar-backdrop {
+      display: none;
+    }
+    .content {
+      padding: var(--space-4);
+      padding-top: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-height: 0;
+      min-width: 0;
+      width: 100%;
+      overflow: auto;
+    }
+    .muted { color: var(--muted); font-size: 12px; }
+    .menu-button, .project-link {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      display: block;
+    }
+    .menu-button.active, .project-link.active {
+      background: rgba(37, 99, 235, 0.18);
+      border-color: rgba(59, 130, 246, 0.35);
+    }
+    .menu-button:hover, .project-link:hover { background: rgba(148, 163, 184, 0.12); }
+    .menu-group { display: grid; gap: 6px; }
+    .menu-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0 4px;
+    }
+    .menu-children, .project-list { display: grid; gap: 4px; }
+    .menu-children { padding-left: 8px; }
+    .project-link strong, .project-card strong, .network-card strong { display: block; font-size: 14px; }
+    .project-link span, .project-card span, .network-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+      word-break: break-word;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-3);
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .page-header h2 { margin: 0; font-size: 28px; }
+    .section-header {
+      display: grid;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+    .section-header h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+    .stack-xs { display: grid; gap: var(--space-1); }
+    .stack-sm { display: grid; gap: var(--space-2); }
+    .stack-md { display: grid; gap: var(--space-3); }
+    .stack-lg { display: grid; gap: var(--space-4); }
+    .panel {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--panel-padding);
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
+    }
+    .grid { display: grid; gap: 18px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: var(--panel-3);
+      color: var(--text);
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    button {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+    }
+    button:hover { background: var(--accent-2); }
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    button.secondary:hover { background: rgba(148, 163, 184, 0.12); }
+    button.danger {
+      background: rgba(220, 38, 38, 0.16);
+      border-color: rgba(220, 38, 38, 0.28);
+      color: #fecaca;
+    }
+    .tabs, .inline-actions, .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .danger-zone {
+      border: 1px solid rgba(220, 38, 38, 0.28);
+      border-radius: var(--radius-md);
+      background: rgba(127, 29, 29, 0.12);
+      padding: var(--space-3);
+    }
+    .danger-zone summary {
+      cursor: pointer;
+      color: #fecaca;
+      font-weight: 600;
+      list-style: none;
+    }
+    .danger-zone summary::-webkit-details-marker {
+      display: none;
+    }
+    .danger-zone-body {
+      display: grid;
+      gap: var(--space-3);
+      margin-top: var(--space-3);
+    }
+    .danger-zone-body form {
+      margin: 0;
+    }
+    .tab-panel {
+      padding: 0;
+      overflow: hidden;
+    }
+    .tabs {
+      padding: var(--space-3) var(--space-3) 0;
+      gap: 6px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      align-items: flex-end;
+      position: relative;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0.04));
+    }
+    .tabs::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 1px;
+      background: rgba(148, 163, 184, 0.18);
+      z-index: 0;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tabs button {
+      flex: 0 0 auto;
+      min-width: 0;
+      padding: 9px 14px 10px;
+      border-radius: 10px 10px 0 0;
+      border: 0;
+      background: rgba(15, 23, 42, 0.24);
+      color: var(--muted);
+      margin-bottom: -1px;
+      font-weight: 600;
+      line-height: 1.2;
+      position: relative;
+      z-index: 1;
+      transition: background 120ms ease, color 120ms ease;
+    }
+    .tabs button:hover {
+      background: rgba(30, 41, 59, 0.68);
+      color: var(--text);
+    }
+    .tabs button.active {
+      background: rgba(30, 41, 59, 0.96);
+      color: #eff6ff;
+      z-index: 2;
+      border-top: 1px solid rgba(148, 163, 184, 0.22);
+      border-left: 1px solid rgba(148, 163, 184, 0.22);
+      border-right: 1px solid rgba(148, 163, 184, 0.22);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    .tab-content {
+      padding: var(--panel-padding);
+      background: rgba(30, 41, 59, 0.96);
+    }
+    .deploy-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+    .deploy-actions-grid button {
+      width: 100%;
+    }
+    .card-list, .network-list { display: grid; gap: 12px; }
+    .project-card, .network-card, .surface {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--surface-padding);
+      background: rgba(15, 23, 42, 0.7);
+    }
+    .managed-files-editor {
+      display: grid;
+      gap: var(--space-3);
+    }
+    .managed-file-row {
+      display: grid;
+      gap: var(--space-2);
+    }
+    .managed-file-summary {
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+    .managed-file-path {
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+    .managed-file-fields {
+      display: grid;
+      gap: var(--space-2);
+    }
+    .managed-file-row.collapsed .managed-file-fields {
+      display: none;
+    }
+    .managed-file-remove {
+      padding: 6px 10px;
+    }
+    .managed-file-toggle {
+      padding: 6px 10px;
+    }
+    .project-card { cursor: pointer; }
+    .kv {
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr);
+      gap: 8px 14px;
+      font-size: 14px;
+    }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; word-break: break-word; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: rgba(22, 163, 74, 0.16);
+      color: #bbf7d0;
+    }
+    .badge.stopped { background: rgba(220, 38, 38, 0.16); color: #fecaca; }
+    .badge.unknown { background: rgba(148, 163, 184, 0.16); color: #e2e8f0; }
+    .status-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .status-inline.hidden {
+      display: none;
+    }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 2px solid rgba(148, 163, 184, 0.28);
+      border-top-color: #93c5fd;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+    .split.single {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .section-stack {
+      display: grid;
+      gap: var(--space-5);
+    }
+    .table-wrap {
+      overflow: auto;
+      border-radius: var(--radius-md);
+    }
+    .desktop-only {
+      display: block;
+    }
+    .mobile-only {
+      display: none;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 720px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: rgba(15, 23, 42, 0.7);
+      overflow: hidden;
+    }
+    .data-table th,
+    .data-table td {
+      padding: 12px var(--surface-padding);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      font-size: 14px;
+    }
+    .data-table th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .data-table tr:last-child td {
+      border-bottom: 0;
+    }
+    .data-table th:first-child {
+      border-top-left-radius: var(--radius-md);
+    }
+    .data-table th:last-child {
+      border-top-right-radius: var(--radius-md);
+    }
+    .data-table tr:last-child td:first-child {
+      border-bottom-left-radius: var(--radius-md);
+    }
+    .data-table tr:last-child td:last-child {
+      border-bottom-right-radius: var(--radius-md);
+    }
+    .table-actions {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+    .table-actions button {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .container-cards {
+      display: none;
+      gap: var(--space-3);
+    }
+    .container-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--surface-padding);
+      background: rgba(15, 23, 42, 0.7);
+      display: grid;
+      gap: var(--space-3);
+    }
+    .container-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+    }
+    .container-card-meta {
+      display: grid;
+      gap: var(--space-1);
+      color: var(--muted);
+      font-size: 12px;
+      word-break: break-word;
+    }
+    pre {
+      margin: 0;
+      min-height: 180px;
+      max-height: 420px;
+      overflow: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #020617;
+      padding: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .empty {
+      padding: 24px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .flash {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(59, 130, 246, 0.14);
+      color: #dbeafe;
+    }
+    .terminal-host {
+      height: 360px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #020617;
+      overflow: hidden;
+    }
+    .terminal-host.hidden {
+      display: none;
+    }
+    .terminal-inner {
+      width: 100%;
+      height: 100%;
+      padding: 10px 12px;
+    }
+    .terminal-host .xterm,
+    .terminal-host .xterm-screen,
+    .terminal-host .xterm-viewport {
+      height: 100% !important;
+    }
+    .terminal-host .xterm-viewport { overflow-y: auto; }
+    @media (max-width: 960px) {
+      .app-body { grid-template-columns: 1fr; }
+      .menu-toggle { display: inline-flex; }
+      .sidebar {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        bottom: 0;
+        width: min(280px, 82vw);
+        z-index: 40;
+        border-right: 1px solid var(--border);
+        border-bottom: 0;
+        transform: translateX(-100%);
+        transition: transform 0.18s ease;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-backdrop {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        background: rgba(2, 6, 23, 0.56);
+      }
+      .sidebar-backdrop.open {
+        display: block;
+      }
+      .content {
+        padding: var(--space-3);
+      }
+      .page-header h2 {
+        font-size: 24px;
+      }
+      .section-stack {
+        gap: var(--space-4);
+      }
+      .panel {
+        padding: var(--space-4);
+      }
+      input, textarea, select, button {
+        font-size: 16px;
+      }
+      textarea {
+        min-height: 88px;
+      }
+      .tabs, .inline-actions, .actions, .table-actions {
+        width: 100%;
+      }
+      .tabs {
+        gap: 6px;
+        padding: var(--space-3) var(--space-3) 0;
+      }
+      .tabs button {
+        width: auto;
+        min-width: 0;
+        padding: 9px 12px 10px;
+        font-size: 14px;
+      }
+      .tab-content {
+        padding: var(--space-4);
+      }
+      .deploy-actions-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .table-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .table-actions button {
+        width: 100%;
+      }
+      .desktop-only {
+        display: none !important;
+      }
+      .mobile-only {
+        display: grid !important;
+      }
+      .data-table {
+        min-width: 560px;
+      }
+      .kv {
+        grid-template-columns: 96px minmax(0, 1fr);
+      }
+      .section-header {
+        margin-bottom: var(--space-3);
+      }
+      .grid.two, .grid.three, .split { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="site-header-wrap">
+      <div class="site-header">
+        <div class="header-left">
+          <button id="menu-toggle" class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false"><span class="menu-toggle-icon"><span></span></span></button>
+          <h1 class="site-header-title">ComposePilot</h1>
+        </div>
+      </div>
+    </div>
+    <div class="app-body">
+      <aside class="sidebar">
+        {{template "sidebar" .}}
+      </aside>
+      <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+      {{if eq .ContentTemplate "content-home"}}
+        {{template "content-home" .}}
+      {{else if eq .ContentTemplate "content-project-new"}}
+        {{template "content-project-new" .}}
+      {{else if eq .ContentTemplate "content-project-detail"}}
+        {{template "content-project-detail" .}}
+      {{else if eq .ContentTemplate "content-networks"}}
+        {{template "content-networks" .}}
+      {{end}}
+    </div>
+  </div>
+  <script>
+    function wireSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      const toggle = document.getElementById('menu-toggle');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      if (!sidebar || !toggle || !backdrop) return;
+      const closeSidebar = () => {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+      };
+      const openSidebar = () => {
+        sidebar.classList.add('open');
+        backdrop.classList.add('open');
+        toggle.setAttribute('aria-expanded', 'true');
+      };
+      toggle.onclick = () => {
+        if (sidebar.classList.contains('open')) {
+          closeSidebar();
+          return;
+        }
+        openSidebar();
+      };
+      backdrop.onclick = closeSidebar;
+      window.onresize = () => {
+        if (window.innerWidth > 960) closeSidebar();
+      };
+      document.querySelectorAll('.sidebar a').forEach((link) => {
+        link.onclick = () => {
+          if (window.innerWidth <= 960) closeSidebar();
+        };
+      });
+    }
+
+    function initComposePilotPage() {
+      const main = document.getElementById('app-main');
+      if (!main) return;
+      const currentPath = window.location.pathname;
+      const navHome = document.getElementById('nav-home');
+      const navNetworks = document.getElementById('nav-networks');
+      if (navHome) navHome.classList.toggle('active', currentPath === '/' || currentPath === '/projects/new');
+      if (navNetworks) navNetworks.classList.toggle('active', currentPath === '/settings/networks');
+      document.querySelectorAll('[data-project-id]').forEach((node) => {
+        const active = currentPath === '/projects/' + node.dataset.projectId;
+        node.classList.toggle('active', active);
+      });
+      if (!document.getElementById('deploy-actions') && window.repoRunnerActionSocket) {
+        window.repoRunnerActionSocket.close();
+        window.repoRunnerActionSocket = null;
+      }
+      if (!document.getElementById('containers-panel') && window.repoRunnerContainersPoller) {
+        clearInterval(window.repoRunnerContainersPoller);
+        window.repoRunnerContainersPoller = null;
+      }
+      wireManagedFiles(main);
+      wireLogs(main);
+      wireExec(main);
+      wireDeployActions(main);
+      wireContainerStatus(main);
+    }
+
+    function wireManagedFiles(main) {
+      main.querySelectorAll('[data-managed-files]').forEach((editor) => {
+        if (editor.dataset.wired === 'true') return;
+        editor.dataset.wired = 'true';
+        const list = editor.querySelector('[data-managed-files-list]');
+        const addButton = editor.querySelector('[data-managed-file-add]');
+        if (!list || !addButton) return;
+
+        const template = () => [
+          '<div class="managed-file-row surface" data-managed-file-row>',
+          '<div class="inline-actions managed-file-summary">',
+          '<div class="managed-file-path" data-managed-file-label>New file</div>',
+          '<div class="inline-actions">',
+          '<button class="secondary managed-file-toggle" type="button" data-managed-file-toggle>Collapse</button>',
+          '<button class="secondary managed-file-remove" type="button" data-managed-file-remove>Remove</button>',
+          '</div>',
+          '</div>',
+          '<div class="managed-file-fields" data-managed-file-fields>',
+          '<label>Relative path</label>',
+          '<input name="managedFilePath" placeholder="config/app.conf">',
+          '<label>Content</label>',
+          '<textarea name="managedFileContent" placeholder="key=value"></textarea>',
+          '</div>',
+          '</div>',
+        ].join('');
+
+        const syncManagedFileRow = (row) => {
+          if (!row) return;
+          const pathInput = row.querySelector('input[name="managedFilePath"]');
+          const label = row.querySelector('[data-managed-file-label]');
+          const toggle = row.querySelector('[data-managed-file-toggle]');
+          const path = pathInput ? pathInput.value.trim() : '';
+          if (label) {
+            label.textContent = path || 'New file';
+          }
+          if (toggle) {
+            toggle.textContent = row.classList.contains('collapsed') ? 'Edit' : 'Collapse';
+          }
+        };
+
+        list.querySelectorAll('[data-managed-file-row]').forEach(syncManagedFileRow);
+
+        addButton.addEventListener('click', () => {
+          list.insertAdjacentHTML('beforeend', template());
+          syncManagedFileRow(list.lastElementChild);
+        });
+
+        editor.addEventListener('input', (event) => {
+          const row = event.target.closest('[data-managed-file-row]');
+          if (!row) return;
+          syncManagedFileRow(row);
+        });
+
+        editor.addEventListener('click', (event) => {
+          const toggle = event.target.closest('[data-managed-file-toggle]');
+          if (toggle) {
+            event.preventDefault();
+            const row = toggle.closest('[data-managed-file-row]');
+            if (!row) return;
+            row.classList.toggle('collapsed');
+            syncManagedFileRow(row);
+            return;
+          }
+          const button = event.target.closest('[data-managed-file-remove]');
+          if (!button) return;
+          event.preventDefault();
+          const rows = list.querySelectorAll('.managed-file-row');
+          if (rows.length <= 1) {
+            const row = rows[0];
+            if (!row) return;
+            const pathInput = row.querySelector('input[name=\"managedFilePath\"]');
+            const contentInput = row.querySelector('textarea[name=\"managedFileContent\"]');
+            if (pathInput) pathInput.value = '';
+            if (contentInput) contentInput.value = '';
+            row.classList.remove('collapsed');
+            syncManagedFileRow(row);
+            return;
+          }
+          button.closest('.managed-file-row')?.remove();
+        });
+      });
+    }
+
+    function renderContainers(panel, containers) {
+      if (!panel) return;
+      const escapeHtml = (value) => String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+      if (!containers || containers.length === 0) {
+        panel.innerHTML = '<div class="empty">No containers found for this project.</div>';
+        return;
+      }
+      const cards = containers.map((container) => {
+        const stateText = container.state || container.status || 'unknown';
+        const badgeClass = /running/i.test((container.state || '') + ' ' + (container.status || '')) ? '' : ((container.state || container.status) ? 'stopped' : 'unknown');
+        return [
+          '<tr>',
+          '<td><strong>' + escapeHtml(container.name) + '</strong></td>',
+          '<td>' + escapeHtml(container.service) + '</td>',
+          '<td>' + escapeHtml(container.image) + '</td>',
+          '<td><span class="badge ' + badgeClass + '">' + escapeHtml(container.status || stateText) + '</span></td>',
+          '<td><div class="table-actions">',
+          '<button type="button" class="secondary" data-container-action="exec" data-container-name="' + escapeHtml(container.name) + '">Exec</button>',
+          '<button type="button" class="secondary" data-container-action="logs" data-container-name="' + escapeHtml(container.name) + '">Logs</button>',
+          '<button type="button" class="secondary" data-container-action="restart" data-container-name="' + escapeHtml(container.name) + '">Restart</button>',
+          '</div></td>',
+          '</tr>'
+        ].join('');
+      }).join('');
+      const mobileCards = containers.map((container) => {
+        const stateText = container.state || container.status || 'unknown';
+        const badgeClass = /running/i.test((container.state || '') + ' ' + (container.status || '')) ? '' : ((container.state || container.status) ? 'stopped' : 'unknown');
+        return [
+          '<div class="container-card">',
+          '<div class="container-card-header">',
+          '<strong>' + escapeHtml(container.name) + '</strong>',
+          '<span class="badge ' + badgeClass + '">' + escapeHtml(container.status || stateText) + '</span>',
+          '</div>',
+          '<div class="container-card-meta">',
+          '<span>Service: ' + escapeHtml(container.service) + '</span>',
+          '<span>Image: ' + escapeHtml(container.image) + '</span>',
+          '</div>',
+          '<div class="table-actions">',
+          '<button type="button" class="secondary" data-container-action="exec" data-container-name="' + escapeHtml(container.name) + '">Exec</button>',
+          '<button type="button" class="secondary" data-container-action="logs" data-container-name="' + escapeHtml(container.name) + '">Logs</button>',
+          '<button type="button" class="secondary" data-container-action="restart" data-container-name="' + escapeHtml(container.name) + '">Restart</button>',
+          '</div>',
+          '</div>'
+        ].join('');
+      }).join('');
+      panel.innerHTML = [
+        '<div class="table-wrap desktop-only"><table class="data-table"><thead><tr>',
+        '<th>Name</th><th>Service</th><th>Image</th><th>Status</th><th>Actions</th>',
+        '</tr></thead><tbody>',
+        cards,
+        '</tbody></table></div>',
+        '<div class="container-cards mobile-only">',
+        mobileCards,
+        '</div>'
+      ].join('');
+    }
+
+    function wireContainerStatus(main) {
+      const serviceID = main.dataset.serviceId;
+      const panel = document.getElementById('containers-panel');
+      if (!serviceID || !panel) return;
+
+      const refreshContainers = async () => {
+        try {
+          const response = await fetch('/api/services/' + serviceID + '/containers', { headers: { 'Accept': 'application/json' } });
+          if (!response.ok) return;
+          const containers = await response.json();
+          renderContainers(panel, containers);
+        } catch (_) {
+        }
+      };
+
+      panel.onclick = async (event) => {
+        const button = event.target.closest('[data-container-action]');
+        if (!button) return;
+        const action = button.dataset.containerAction;
+        const container = button.dataset.containerName;
+        if (!action || !container) return;
+        if (action === 'exec' || action === 'logs') {
+          htmx.ajax('GET', '/projects/' + serviceID + '?tab=' + action + '&container=' + encodeURIComponent(container), { target: '#app-main', swap: 'outerHTML' });
+          return;
+        }
+        if (action === 'restart') {
+          button.disabled = true;
+          try {
+            await fetch('/api/services/' + serviceID + '/containers/' + encodeURIComponent(container) + '/restart', { method: 'POST' });
+          } finally {
+            refreshContainers();
+          }
+        }
+      };
+
+      if (window.repoRunnerContainersPoller) {
+        clearInterval(window.repoRunnerContainersPoller);
+      }
+      refreshContainers();
+      window.repoRunnerContainersPoller = window.setInterval(refreshContainers, 5000);
+    }
+
+    function wireDeployActions(main) {
+      const serviceID = main.dataset.serviceId;
+      const actions = document.getElementById('deploy-actions');
+      const output = document.getElementById('deploy-output');
+      const indicator = document.getElementById('deploy-running');
+      const label = document.getElementById('deploy-running-label');
+      if (!serviceID || !actions || !output || !indicator || !label) return;
+
+      const setRunning = (running, actionName) => {
+        actions.querySelectorAll('button').forEach((button) => { button.disabled = running; });
+        indicator.classList.toggle('hidden', !running);
+        if (running) {
+          label.textContent = 'Running ' + actionName + '...';
+        }
+      };
+
+      const closeExisting = () => {
+        if (window.repoRunnerActionSocket) {
+          window.repoRunnerActionSocket.close();
+          window.repoRunnerActionSocket = null;
+        }
+      };
+
+      actions.querySelectorAll('button[data-action]').forEach((button) => {
+        button.onclick = () => {
+          const action = button.dataset.action;
+          closeExisting();
+          output.textContent = '';
+          setRunning(true, action);
+          const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+          const socket = new WebSocket(scheme + '://' + window.location.host + '/api/services/' + serviceID + '/actions/' + action + '/stream');
+          window.repoRunnerActionSocket = socket;
+          socket.onmessage = (event) => {
+            const payload = JSON.parse(event.data);
+            if (payload.type === 'output') {
+              output.textContent += payload.data || '';
+              output.scrollTop = output.scrollHeight;
+              return;
+            }
+            if (payload.type === 'done') {
+              setRunning(false, action);
+              window.repoRunnerActionSocket = null;
+              if (payload.error) {
+                output.textContent += '\nERROR: ' + payload.error + '\n';
+              } else {
+                output.textContent += '\n[' + action + ' completed]\n';
+              }
+              output.scrollTop = output.scrollHeight;
+              if (typeof window.repoRunnerContainersPoller === 'number') {
+                fetch('/api/services/' + serviceID + '/containers', { headers: { 'Accept': 'application/json' } })
+                  .then((response) => response.ok ? response.json() : [])
+                  .then((containers) => renderContainers(document.getElementById('containers-panel'), containers))
+                  .catch(() => {});
+              }
+            }
+          };
+          socket.onerror = () => {
+            output.textContent += '\nERROR: action stream connection failed\n';
+            setRunning(false, action);
+          };
+          socket.onclose = () => {
+            if (window.repoRunnerActionSocket === socket) {
+              window.repoRunnerActionSocket = null;
+              setRunning(false, action);
+            }
+          };
+        };
+      });
+
+      indicator.classList.add('hidden');
+    }
+
+    function wireLogs(main) {
+      const serviceID = main.dataset.serviceId;
+      const loadButton = document.getElementById('logs-load');
+      const streamButton = document.getElementById('logs-stream');
+      const stopButton = document.getElementById('logs-stop');
+      const output = document.getElementById('logs-output');
+      const container = document.getElementById('logs-container');
+      const tail = document.getElementById('logs-tail');
+      const filter = document.getElementById('logs-filter');
+      if (!serviceID || !loadButton || !streamButton || !stopButton || !output || !container) return;
+      if (window.repoRunnerLogStream) {
+        window.repoRunnerLogStream.close();
+        window.repoRunnerLogStream = null;
+      }
+      loadButton.onclick = async () => {
+        const params = new URLSearchParams({
+          container: container.value,
+          tail: tail.value || '200',
+          filter: filter.value || ''
+        });
+        const response = await fetch('/api/services/' + serviceID + '/logs?' + params.toString());
+        const payload = await response.json();
+        output.textContent = payload.output || '';
+      };
+      streamButton.onclick = () => {
+        if (window.repoRunnerLogStream) window.repoRunnerLogStream.close();
+        output.textContent = '';
+        const params = new URLSearchParams({
+          container: container.value,
+          tail: tail.value || '200',
+          filter: filter.value || '',
+          follow: '1'
+        });
+        window.repoRunnerLogStream = new EventSource('/api/services/' + serviceID + '/logs?' + params.toString());
+        window.repoRunnerLogStream.onmessage = (event) => {
+          output.textContent += event.data + '\n';
+          output.scrollTop = output.scrollHeight;
+        };
+      };
+      stopButton.onclick = () => {
+        if (window.repoRunnerLogStream) {
+          window.repoRunnerLogStream.close();
+          window.repoRunnerLogStream = null;
+        }
+      };
+    }
+
+    async function wireExec(main) {
+      const teardownExec = () => {
+        const state = window.repoRunnerExecState;
+        if (!state) return;
+        if (state.resizeObserver) state.resizeObserver.disconnect();
+        if (state.handleWindowResize) window.removeEventListener('resize', state.handleWindowResize);
+        if (state.socket) state.socket.close();
+        if (state.terminal) state.terminal.dispose();
+        window.repoRunnerExecState = null;
+      };
+      teardownExec();
+      const serviceID = main.dataset.serviceId;
+      const openButton = document.getElementById('exec-open');
+      const closeButton = document.getElementById('exec-close');
+      const container = document.getElementById('exec-container');
+      const command = document.getElementById('exec-command');
+      const status = document.getElementById('exec-status');
+      const target = document.getElementById('exec-target');
+      const terminalFrame = document.getElementById('exec-terminal-frame');
+      const terminalHost = document.getElementById('exec-terminal');
+      if (!serviceID || !openButton || !closeButton || !container || !command || !status || !target || !terminalFrame || !terminalHost) return;
+
+      const setExecState = (state, text, currentTarget) => {
+        status.textContent = text;
+        status.className = 'badge ' + (state || 'unknown');
+        target.textContent = currentTarget || 'No active session.';
+        const connected = state === 'running';
+        closeButton.disabled = !connected;
+      };
+
+      const hideTerminal = () => {
+        terminalHost.innerHTML = '';
+        terminalFrame.classList.add('hidden');
+      };
+
+      const showTerminal = () => {
+        terminalFrame.classList.remove('hidden');
+      };
+
+      const closeSocket = () => {
+        const state = window.repoRunnerExecState;
+        if (state && state.socket) {
+          state.socket.close();
+          state.socket = null;
+        }
+        hideTerminal();
+        setExecState('unknown', 'disconnected', 'No active session.');
+      };
+
+      hideTerminal();
+      setExecState('unknown', 'disconnected', 'No active session.');
+      openButton.disabled = false;
+      closeButton.onclick = closeSocket;
+
+      openButton.onclick = async () => {
+        closeSocket();
+        if (!window.ComposePilotXterm) {
+          setExecState('unknown', 'loading terminal', 'Loading xterm.js...');
+          await new Promise((resolve) => window.addEventListener('composepilot:xterm-ready', resolve, { once: true }));
+        }
+        const currentTarget = container.value + ' :: ' + (command.value || '/bin/sh');
+        const { Terminal, FitAddon } = window.ComposePilotXterm;
+        terminalHost.innerHTML = '';
+        showTerminal();
+        const term = new Terminal({
+          cursorBlink: true,
+          convertEol: true,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+          fontSize: 13,
+          theme: { background: '#020617', foreground: '#e5e7eb' }
+        });
+        const fitAddon = new FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(terminalHost);
+        const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const syncTerminalSize = () => {
+          fitAddon.fit();
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+          }
+        };
+        requestAnimationFrame(() => {
+          syncTerminalSize();
+          term.focus();
+          setTimeout(syncTerminalSize, 50);
+        });
+        const params = new URLSearchParams({
+          container: container.value,
+          cmd: command.value || '/bin/sh',
+          cols: String(term.cols || 80),
+          rows: String(term.rows || 24)
+        });
+        const socket = new WebSocket(scheme + '://' + window.location.host + '/api/services/' + serviceID + '/exec?' + params.toString());
+        socket.binaryType = 'arraybuffer';
+
+        const resizeObserver = new ResizeObserver(() => {
+          syncTerminalSize();
+        });
+        resizeObserver.observe(terminalHost);
+        const handleWindowResize = () => syncTerminalSize();
+        window.addEventListener('resize', handleWindowResize);
+
+        window.repoRunnerExecState = { socket, terminal: term, resizeObserver, handleWindowResize };
+        setExecState('unknown', 'connecting', currentTarget);
+
+        term.onData((data) => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'input', data }));
+          }
+        });
+
+        socket.onopen = () => {
+          setExecState('running', 'connected', currentTarget);
+          syncTerminalSize();
+        };
+        socket.onmessage = (event) => {
+          if (typeof event.data === 'string') {
+            try {
+              const payload = JSON.parse(event.data);
+              if (payload.type === 'exit') {
+                term.writeln('');
+                term.writeln(payload.error ? '[exec exited: ' + payload.error + ']' : '[exec exited]');
+                return;
+              }
+            } catch (_) {
+              term.write(event.data);
+            }
+            return;
+          }
+          if (event.data instanceof ArrayBuffer) {
+            term.write(new Uint8Array(event.data));
+          }
+        };
+        socket.onerror = () => {
+          setExecState('stopped', 'error', currentTarget);
+        };
+        socket.onclose = () => {
+          setExecState('stopped', 'closed', currentTarget);
+          resizeObserver.disconnect();
+          window.removeEventListener('resize', handleWindowResize);
+          hideTerminal();
+        };
+      };
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      wireSidebar();
+      initComposePilotPage();
+    });
+    document.body.addEventListener('htmx:afterSwap', () => {
+      wireSidebar();
+      initComposePilotPage();
+    });
+  </script>
+</body>
+</html>
+{{end}}
+
+{{define "sidebar"}}
+<nav class="grid">
+  <div class="menu-group">
+    <a id="nav-home" class="menu-button" href="/" hx-get="/" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">Home</a>
+  </div>
+  <div class="menu-group">
+    <div class="menu-label">Project</div>
+    <div id="sidebar-projects" class="menu-children">
+      {{if .Services}}
+        {{range .Services}}
+          <a class="project-link" data-project-id="{{.ID}}" href="/projects/{{.ID}}" hx-get="/projects/{{.ID}}" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">
+            <strong>{{.Name}}</strong>
+            <span>{{.Branch}}</span>
+          </a>
+        {{end}}
+      {{else}}
+        <div class="muted">No projects yet.</div>
+      {{end}}
+    </div>
+  </div>
+  <div class="menu-group">
+    <div class="menu-label">Settings</div>
+    <div class="menu-children">
+      <a id="nav-networks" class="menu-button" href="/settings/networks" hx-get="/settings/networks" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">Networks</a>
+    </div>
+  </div>
+</nav>
+{{end}}

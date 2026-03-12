@@ -1,0 +1,11 @@
+data/
+workspace/
+tmp/
+dist/
+.playwright-cli/
+.playwright/
+.vscode/
+*.db
+*.db-journal
+.env
+dev/master_key

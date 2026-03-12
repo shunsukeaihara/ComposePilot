@@ -1,0 +1,20 @@
+[Unit]
+Description=ComposePilot
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=composepilot
+Group=composepilot
+WorkingDirectory=/opt/composepilot
+EnvironmentFile=/etc/composepilot/composepilot.env
+ExecStart=/usr/local/bin/composepilot -listen :8080 -data-dir /var/lib/composepilot -workspace /var/lib/composepilot/workspace
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

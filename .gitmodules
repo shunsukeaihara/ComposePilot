@@ -1,0 +1,3 @@
+[submodule "samples/composepilot_sample_project"]
+	path = samples/composepilot_sample_project
+	url = https://github.com/shunsukeaihara/composepilot_sample_project

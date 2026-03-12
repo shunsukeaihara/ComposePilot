@@ -1,0 +1,391 @@
+{{define "content-home"}}
+<main id="app-main" class="content" data-page="home">
+  {{if .Flash}}
+  <div class="flash">{{.Flash}}</div>
+  {{end}}
+  <section class="grid">
+    <div class="page-header">
+      <div>
+        <h2>Home</h2>
+        <div class="muted">Browse registered projects and open their detail pages.</div>
+      </div>
+      <a href="/projects/new" hx-get="/projects/new" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">
+        <button>Create project</button>
+      </a>
+    </div>
+    <div class="panel">
+      <div class="page-header">
+        <div class="section-header">
+          <h3>Project List</h3>
+          <div class="muted">Name, branch, repository, and workdir overview.</div>
+        </div>
+        <a href="/" hx-get="/" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true"><button class="secondary">Refresh</button></a>
+      </div>
+      <div class="card-list">
+        {{if .Services}}
+          {{range .Services}}
+          <a class="project-card" href="/projects/{{.ID}}" hx-get="/projects/{{.ID}}" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">
+            <strong>{{.Name}}</strong>
+            <span>Branch: {{.Branch}}</span>
+            <span>Repo: {{.RepoURL}}</span>
+            <span>Workdir: {{displayWorkDir .WorkDir}}</span>
+          </a>
+          {{end}}
+        {{else}}
+          <div class="empty">No projects registered yet.</div>
+        {{end}}
+      </div>
+    </div>
+  </section>
+</main>
+{{end}}
+
+{{define "content-project-new"}}
+<main id="app-main" class="content" data-page="project-create">
+  {{if .Flash}}<div class="flash">{{.Flash}}</div>{{end}}
+  <section class="grid">
+    <div class="page-header">
+      <div>
+        <h2>New Project</h2>
+        <div class="muted">Register a repository, deploy key, branch, and compose settings.</div>
+      </div>
+      <a href="/" hx-get="/" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true"><button class="secondary">Back to home</button></a>
+    </div>
+    <div class="panel">
+      {{template "project-form" .}}
+    </div>
+  </section>
+</main>
+{{end}}
+
+{{define "project-form"}}
+<form method="post" action="/projects" hx-post="/projects" hx-target="#app-main" hx-swap="outerHTML">
+  <div class="grid">
+    <div class="grid two">
+      <div><label for="create-name">Name</label><input id="create-name" name="name" value="{{with .Project}}{{.Service.Name}}{{end}}" required></div>
+      <div><label for="create-branch">Branch</label><input id="create-branch" name="branch" value="{{with .Project}}{{.Service.Branch}}{{else}}main{{end}}" required></div>
+    </div>
+    <div class="grid two">
+      <div><label for="create-repo">Repo URL</label><input id="create-repo" name="repoUrl" value="{{with .Project}}{{.Service.RepoURL}}{{end}}" placeholder="git@github.com:org/repo.git" required></div>
+      <div><label for="create-workdir">Work dir</label><input id="create-workdir" name="workDir" value="{{with .Project}}{{displayWorkDir .Service.WorkDir}}{{end}}" placeholder="optional relative path"></div>
+    </div>
+    <div class="grid two">
+      <div><label for="create-compose">Compose files (one per line)</label><textarea id="create-compose" name="composeFiles" required>{{with .Project}}{{joinLines .Service.ComposeFiles}}{{else}}docker-compose.yml{{end}}</textarea></div>
+      <div><label for="create-env">Environment (KEY=VALUE per line)</label><textarea id="create-env" name="environment">{{with .Project}}{{envText .Service.Environment}}{{end}}</textarea></div>
+    </div>
+    <div class="grid">
+      <div class="section-header">
+        <h3>Managed Files</h3>
+      </div>
+      <div class="managed-files-editor" data-managed-files>
+        <div class="grid" data-managed-files-list>
+          {{if .Project}}
+          {{range managedFilesOrBlank .Project.Service.ManagedFiles}}
+          <div class="managed-file-row surface {{if .Path}}collapsed{{end}}" data-managed-file-row>
+            <div class="inline-actions managed-file-summary">
+              <div class="managed-file-path" data-managed-file-label>{{if .Path}}{{.Path}}{{else}}New file{{end}}</div>
+              <div class="inline-actions">
+                <button class="secondary managed-file-toggle" type="button" data-managed-file-toggle>{{if .Path}}Edit{{else}}Collapse{{end}}</button>
+                <button class="secondary managed-file-remove" type="button" data-managed-file-remove>Remove</button>
+              </div>
+            </div>
+            <div class="managed-file-fields" data-managed-file-fields>
+              <label>Relative path</label>
+              <input name="managedFilePath" value="{{.Path}}" placeholder="config/app.conf">
+              <label>Content</label>
+              <textarea name="managedFileContent" placeholder="key=value">{{.Content}}</textarea>
+            </div>
+          </div>
+          {{end}}
+          {{else}}
+          <div class="managed-file-row surface" data-managed-file-row>
+            <div class="inline-actions managed-file-summary">
+              <div class="managed-file-path" data-managed-file-label>New file</div>
+              <div class="inline-actions">
+                <button class="secondary managed-file-toggle" type="button" data-managed-file-toggle>Collapse</button>
+                <button class="secondary managed-file-remove" type="button" data-managed-file-remove>Remove</button>
+              </div>
+            </div>
+            <div class="managed-file-fields" data-managed-file-fields>
+              <label>Relative path</label>
+              <input name="managedFilePath" placeholder="config/app.conf">
+              <label>Content</label>
+              <textarea name="managedFileContent" placeholder="key=value"></textarea>
+            </div>
+          </div>
+          {{end}}
+        </div>
+        <button class="secondary" type="button" data-managed-file-add>Add file</button>
+      </div>
+    </div>
+    <div><label for="create-key">Deploy key</label><textarea id="create-key" name="deployKey" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea></div>
+    <div class="inline-actions"><button type="submit">Create project</button></div>
+  </div>
+</form>
+{{end}}
+
+{{define "content-project-detail"}}
+<main id="app-main" class="content" data-page="project-detail" data-service-id="{{.Project.Service.ID}}">
+  {{if .Flash}}<div class="flash">{{.Flash}}</div>{{end}}
+  <section class="grid">
+    <div class="page-header">
+      <div>
+        <h2>{{.Project.Service.Name}}</h2>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-stack">
+        <div>
+          <div class="section-header">
+            <h3>Overview</h3>
+          </div>
+          <div class="surface">
+            <dl class="kv">
+              <dt>Name</dt><dd>{{.Project.Service.Name}}</dd>
+              <dt>Repo</dt><dd>{{.Project.Service.RepoURL}}</dd>
+              <dt>Branch</dt><dd>{{.Project.Service.Branch}}</dd>
+            </dl>
+          </div>
+        </div>
+        <div>
+          <div class="section-header">
+            <h3>Containers</h3>
+          </div>
+        <div id="containers-panel" data-service-id="{{.Project.Service.ID}}">
+          {{if .Project.Containers}}
+          <div class="table-wrap desktop-only">
+            <table class="data-table">
+              <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Service</th>
+                    <th>Image</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+              {{range .Project.Containers}}
+                  <tr>
+                    <td><strong>{{.Name}}</strong></td>
+                    <td>{{.Service}}</td>
+                    <td>{{.Image}}</td>
+                    <td><span class="badge {{badgeClass .State .Status}}">{{if .Status}}{{.Status}}{{else if .State}}{{.State}}{{else}}unknown{{end}}</span></td>
+                    <td>
+                      <div class="table-actions">
+                        <button type="button" class="secondary" data-container-action="exec" data-container-name="{{.Name}}">Exec</button>
+                        <button type="button" class="secondary" data-container-action="logs" data-container-name="{{.Name}}">Logs</button>
+                        <button type="button" class="secondary" data-container-action="restart" data-container-name="{{.Name}}">Restart</button>
+                      </div>
+                    </td>
+                  </tr>
+              {{end}}
+              </tbody>
+            </table>
+          </div>
+          <div class="container-cards mobile-only">
+            {{range .Project.Containers}}
+            <div class="container-card">
+              <div class="container-card-header">
+                <strong>{{.Name}}</strong>
+                <span class="badge {{badgeClass .State .Status}}">{{if .Status}}{{.Status}}{{else if .State}}{{.State}}{{else}}unknown{{end}}</span>
+              </div>
+              <div class="container-card-meta">
+                <span>Service: {{.Service}}</span>
+                <span>Image: {{.Image}}</span>
+              </div>
+              <div class="table-actions">
+                <button type="button" class="secondary" data-container-action="exec" data-container-name="{{.Name}}">Exec</button>
+                <button type="button" class="secondary" data-container-action="logs" data-container-name="{{.Name}}">Logs</button>
+                <button type="button" class="secondary" data-container-action="restart" data-container-name="{{.Name}}">Restart</button>
+              </div>
+            </div>
+            {{end}}
+          </div>
+          {{else}}
+          <div class="empty">No containers found for this project.</div>
+          {{end}}
+        </div>
+      </div>
+      </div>
+    </div>
+    <div class="panel tab-panel">
+      <div class="tabs">
+        <button class="secondary {{if eq .Project.Tab "settings"}}active{{end}}" hx-get="/projects/{{.Project.Service.ID}}?tab=settings" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">Settings</button>
+        <button class="secondary {{if eq .Project.Tab "deploy"}}active{{end}}" hx-get="/projects/{{.Project.Service.ID}}?tab=deploy" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">Actions</button>
+        <button class="secondary {{if eq .Project.Tab "logs"}}active{{end}}" hx-get="/projects/{{.Project.Service.ID}}?tab=logs" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">Logs</button>
+        <button class="secondary {{if eq .Project.Tab "exec"}}active{{end}}" hx-get="/projects/{{.Project.Service.ID}}?tab=exec" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">Exec</button>
+      </div>
+      <div class="tab-content">
+        {{if eq .Project.Tab "deploy"}}
+          {{template "project-tab-deploy" .}}
+        {{else if eq .Project.Tab "logs"}}
+          {{template "project-tab-logs" .}}
+        {{else if eq .Project.Tab "exec"}}
+          {{template "project-tab-exec" .}}
+        {{else}}
+          {{template "project-tab-overview" .}}
+        {{end}}
+      </div>
+    </div>
+  </section>
+</main>
+{{end}}
+
+{{define "project-tab-overview"}}
+<div class="grid">
+  <div class="section-header"><h3>Project Settings</h3></div>
+  <form method="post" action="/projects/{{.Project.Service.ID}}/settings" hx-post="/projects/{{.Project.Service.ID}}/settings" hx-target="#app-main" hx-swap="outerHTML">
+    <div class="grid">
+      <div class="grid two">
+        <div><label>Name</label><input name="name" value="{{.Project.Service.Name}}" required></div>
+        <div><label>Branch</label><input name="branch" value="{{.Project.Service.Branch}}" required></div>
+      </div>
+      <div class="grid two">
+        <div><label>Repo URL</label><input name="repoUrl" value="{{.Project.Service.RepoURL}}" required></div>
+        <div><label>Work dir</label><input name="workDir" value="{{displayWorkDir .Project.Service.WorkDir}}"></div>
+      </div>
+      <div class="grid two">
+        <div><label>Compose files</label><textarea name="composeFiles" required>{{joinLines .Project.Service.ComposeFiles}}</textarea></div>
+        <div><label>Environment</label><textarea name="environment">{{envText .Project.Service.Environment}}</textarea></div>
+      </div>
+      <div class="grid">
+        <div class="section-header">
+          <h3>Managed Files</h3>
+        </div>
+        <div class="managed-files-editor" data-managed-files>
+          <div class="grid" data-managed-files-list>
+            {{range managedFilesOrBlank .Project.Service.ManagedFiles}}
+            <div class="managed-file-row surface {{if .Path}}collapsed{{end}}" data-managed-file-row>
+              <div class="inline-actions managed-file-summary">
+                <div class="managed-file-path" data-managed-file-label>{{if .Path}}{{.Path}}{{else}}New file{{end}}</div>
+                <div class="inline-actions">
+                  <button class="secondary managed-file-toggle" type="button" data-managed-file-toggle>{{if .Path}}Edit{{else}}Collapse{{end}}</button>
+                  <button class="secondary managed-file-remove" type="button" data-managed-file-remove>Remove</button>
+                </div>
+              </div>
+              <div class="managed-file-fields" data-managed-file-fields>
+                <label>Relative path</label>
+                <input name="managedFilePath" value="{{.Path}}" placeholder="config/app.conf">
+                <label>Content</label>
+                <textarea name="managedFileContent" placeholder="key=value">{{.Content}}</textarea>
+              </div>
+            </div>
+            {{end}}
+          </div>
+          <button class="secondary" type="button" data-managed-file-add>Add file</button>
+        </div>
+      </div>
+      <div><label>Deploy key (leave blank to keep current)</label><textarea name="deployKey"></textarea></div>
+      <div class="inline-actions">
+        <button type="submit" name="submitAction" value="save">Save settings</button>
+        <button class="secondary" type="submit" name="submitAction" value="save-deploy">Save and deploy</button>
+      </div>
+    </div>
+  </form>
+  <details class="danger-zone">
+    <summary>Danger Zone</summary>
+    <div class="danger-zone-body">
+      <form method="post" action="/projects/{{.Project.Service.ID}}/settings" hx-post="/projects/{{.Project.Service.ID}}/settings" hx-target="#app-main" hx-swap="outerHTML" class="inline-actions">
+        <button class="danger" type="submit" name="submitAction" value="delete-keep-workspace" onclick="return confirm('Delete this project but keep its workspace files?');">Delete, keep workspace</button>
+        <button class="danger" type="submit" name="submitAction" value="delete" onclick="return confirm('Delete this project and remove its workspace?');">Delete project</button>
+      </form>
+    </div>
+  </details>
+</div>
+{{end}}
+
+{{define "project-tab-deploy"}}
+<div class="grid">
+  <div class="section-header"><h3>Actions</h3></div>
+  <div class="deploy-actions-grid" id="deploy-actions">
+    <button class="action-primary" data-action="deploy" type="button">Deploy</button>
+    <button class="secondary" data-action="pull" type="button">Pull</button>
+    <button class="secondary" data-action="build" type="button">Build</button>
+    <button class="secondary" data-action="restart" type="button">Restart</button>
+    <button class="danger action-danger" data-action="stop" type="button">Stop</button>
+    <button class="danger action-danger" data-action="down" type="button">Down</button>
+  </div>
+  <div id="deploy-running" class="status-inline hidden">
+    <span class="spinner" aria-hidden="true"></span>
+    <span id="deploy-running-label">Running action...</span>
+  </div>
+  <pre id="deploy-output">{{.Project.DeployOutput}}</pre>
+</div>
+{{end}}
+
+{{define "project-tab-logs"}}
+<div class="grid">
+  <div class="section-header"><h3>Logs</h3></div>
+  <div class="grid three">
+    <div><label>Container</label><select id="logs-container">{{range .Project.Containers}}<option value="{{.Name}}" {{if eq $.Project.SelectedContainer .Name}}selected{{end}}>{{.Name}} ({{if .Status}}{{.Status}}{{else}}{{.State}}{{end}})</option>{{end}}</select></div>
+    <div><label>Tail</label><input id="logs-tail" type="number" value="200" min="1"></div>
+    <div><label>Filter</label><input id="logs-filter" placeholder="optional keyword"></div>
+  </div>
+  <div class="inline-actions">
+    <button id="logs-load" class="secondary" type="button">Load snapshot</button>
+    <button id="logs-stream" class="secondary" type="button">Stream</button>
+    <button id="logs-stop" class="danger" type="button">Stop stream</button>
+  </div>
+  <pre id="logs-output"></pre>
+</div>
+{{end}}
+
+{{define "project-tab-exec"}}
+<div class="grid">
+  <div class="section-header"><h3>Exec</h3></div>
+  <div class="inline-actions">
+    <span id="exec-status" class="badge unknown">disconnected</span>
+    <span id="exec-target" class="muted">No active session.</span>
+  </div>
+  <div class="grid two">
+    <div><label>Container</label><select id="exec-container">{{range .Project.Containers}}<option value="{{.Name}}" {{if eq $.Project.SelectedContainer .Name}}selected{{end}}>{{.Name}} ({{if .Status}}{{.Status}}{{else}}{{.State}}{{end}})</option>{{end}}</select></div>
+    <div><label>Command</label><input id="exec-command" value="/bin/sh"></div>
+  </div>
+  <div class="inline-actions">
+    <button id="exec-open" type="button">Open terminal</button>
+    <button id="exec-close" type="button" class="danger">Close terminal</button>
+  </div>
+  <div class="muted">Open terminal to start exec. Closing it ends the session. Reloading the page also closes it.</div>
+  <div id="exec-terminal-frame" class="terminal-host hidden"><div id="exec-terminal" class="terminal-inner"></div></div>
+</div>
+{{end}}
+
+{{define "content-networks"}}
+<main id="app-main" class="content" data-page="networks">
+  {{if .Flash}}<div class="flash">{{.Flash}}</div>{{end}}
+  <section class="grid">
+    <div class="page-header">
+      <div>
+        <h2>Networks</h2>
+        <div class="muted">Create and inspect Docker networks.</div>
+      </div>
+      <a href="/settings/networks" hx-get="/settings/networks" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true"><button class="secondary">Refresh</button></a>
+    </div>
+    <div class="panel grid">
+      <form method="post" action="/settings/networks" hx-post="/settings/networks" hx-target="#app-main" hx-swap="outerHTML">
+        <div class="grid">
+          <div><label for="network-name">Network name</label><input id="network-name" name="name" placeholder="shared-backend"></div>
+          <div class="inline-actions"><button type="submit">Create network</button></div>
+        </div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="section-header"><h3>Available networks</h3></div>
+      <div class="network-list">
+        {{if .Networks}}
+          {{range .Networks}}
+            <div class="network-card">
+              <strong>{{.Name}}</strong>
+              <span>Driver: {{.Driver}}</span>
+              <span>Scope: {{.Scope}}</span>
+            </div>
+          {{end}}
+        {{else}}
+          <div class="empty">No Docker networks found.</div>
+        {{end}}
+      </div>
+    </div>
+  </section>
+</main>
+{{end}}
