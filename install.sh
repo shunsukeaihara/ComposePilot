@@ -5,7 +5,6 @@ OWNER="shunsukeaihara"
 REPO="ComposePilot"
 APP="composepilot"
 SERVICE_USER="composepilot"
-MAC_LABEL="com.shunsukeaihara.composepilot"
 
 log() {
   printf '%s\n' "$*"
@@ -33,10 +32,10 @@ OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH_RAW="$(uname -m)"
 
 case "$OS" in
-  linux|darwin)
+  linux)
     ;;
   *)
-    fail "unsupported OS: $OS"
+    fail "unsupported OS: $OS (install.sh currently supports Linux only)"
     ;;
 esac
 
@@ -63,22 +62,12 @@ ASSET="${APP}_${VERSION_NO_V}_${OS}_${ARCH}.tar.gz"
 DOWNLOAD_URL="https://github.com/${OWNER}/${REPO}/releases/download/${VERSION}/${ASSET}"
 
 BIN_DIR="${COMPOSEPILOT_BIN_DIR:-/usr/local/bin}"
-
-if [ "$OS" = "linux" ]; then
-  CONFIG_DIR="${COMPOSEPILOT_CONFIG_DIR:-/etc/composepilot}"
-  DATA_DIR="${COMPOSEPILOT_DATA_DIR:-/var/lib/composepilot}"
-  WORKSPACE_DIR="${COMPOSEPILOT_WORKSPACE_DIR:-${DATA_DIR}/workspace}"
-  ENV_FILE="${CONFIG_DIR}/composepilot.env"
-  MASTER_KEY_FILE="${CONFIG_DIR}/master_key"
-  SERVICE_FILE="/etc/systemd/system/composepilot.service"
-else
-  CONFIG_DIR="${COMPOSEPILOT_CONFIG_DIR:-/usr/local/etc/composepilot}"
-  DATA_DIR="${COMPOSEPILOT_DATA_DIR:-/usr/local/var/lib/composepilot}"
-  WORKSPACE_DIR="${COMPOSEPILOT_WORKSPACE_DIR:-${DATA_DIR}/workspace}"
-  ENV_FILE="${CONFIG_DIR}/composepilot.env"
-  MASTER_KEY_FILE="${CONFIG_DIR}/master_key"
-  SERVICE_FILE="/Library/LaunchDaemons/${MAC_LABEL}.plist"
-fi
+CONFIG_DIR="${COMPOSEPILOT_CONFIG_DIR:-/etc/composepilot}"
+DATA_DIR="${COMPOSEPILOT_DATA_DIR:-/var/lib/composepilot}"
+WORKSPACE_DIR="${COMPOSEPILOT_WORKSPACE_DIR:-${DATA_DIR}/workspace}"
+ENV_FILE="${CONFIG_DIR}/composepilot.env"
+MASTER_KEY_FILE="${CONFIG_DIR}/master_key"
+SERVICE_FILE="/etc/systemd/system/composepilot.service"
 
 LISTEN_ADDR="${COMPOSEPILOT_LISTEN:-:8080}"
 BIN_PATH="${BIN_DIR}/${APP}"
@@ -167,63 +156,37 @@ ensure_linux_user() {
   fail "could not create ${SERVICE_USER}; neither useradd nor adduser is available"
 }
 
-write_macos_service() {
-  cat > "$SERVICE_FILE" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-  <dict>
-    <key>Label</key>
-    <string>${MAC_LABEL}</string>
-    <key>ProgramArguments</key>
-    <array>
-      <string>${BIN_PATH}</string>
-      <string>-listen</string>
-      <string>${LISTEN_ADDR}</string>
-      <string>-data-dir</string>
-      <string>${DATA_DIR}</string>
-      <string>-workspace</string>
-      <string>${WORKSPACE_DIR}</string>
-    </array>
-    <key>EnvironmentVariables</key>
-    <dict>
-      <key>COMPOSEPILOT_MASTER_KEY_FILE</key>
-      <string>${MASTER_KEY_FILE}</string>
-    </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>WorkingDirectory</key>
-    <string>${DATA_DIR}</string>
-    <key>StandardOutPath</key>
-    <string>${DATA_DIR}/composepilot.log</string>
-    <key>StandardErrorPath</key>
-    <string>${DATA_DIR}/composepilot.log</string>
-  </dict>
-</plist>
-EOF
+ensure_docker_group_membership() {
+  if command -v getent >/dev/null 2>&1; then
+    if ! getent group docker >/dev/null 2>&1; then
+      log "docker group not found; skipping group membership setup."
+      return
+    fi
+  elif ! grep -q '^docker:' /etc/group 2>/dev/null; then
+    log "docker group not found; skipping group membership setup."
+    return
+  fi
+
+  if command -v usermod >/dev/null 2>&1; then
+    usermod -aG docker "${SERVICE_USER}"
+    return
+  fi
+  if command -v adduser >/dev/null 2>&1; then
+    adduser "${SERVICE_USER}" docker
+    return
+  fi
+  log "could not add ${SERVICE_USER} to docker group automatically."
 }
 
-if [ "$OS" = "linux" ]; then
-  need_cmd systemctl
-  ensure_linux_user
-  chown -R "${SERVICE_USER}:${SERVICE_USER}" "$DATA_DIR"
-  write_linux_service
-  chmod 644 "$SERVICE_FILE"
-  systemctl daemon-reload
-  systemctl enable --now composepilot
-  log "ComposePilot installed and started with systemd."
-else
-  need_cmd launchctl
-  write_macos_service
-  chmod 644 "$SERVICE_FILE"
-  launchctl bootout system "$SERVICE_FILE" >/dev/null 2>&1 || true
-  launchctl bootstrap system "$SERVICE_FILE"
-  launchctl enable "system/${MAC_LABEL}" >/dev/null 2>&1 || true
-  launchctl kickstart -k "system/${MAC_LABEL}" >/dev/null 2>&1 || true
-  log "ComposePilot installed and started with launchd."
-fi
+need_cmd systemctl
+ensure_linux_user
+ensure_docker_group_membership
+chown -R "${SERVICE_USER}:${SERVICE_USER}" "$DATA_DIR"
+write_linux_service
+chmod 644 "$SERVICE_FILE"
+systemctl daemon-reload
+systemctl enable --now composepilot
+log "ComposePilot installed and started with systemd."
 
 log "Version: ${VERSION}"
 log "Binary: ${BIN_PATH}"

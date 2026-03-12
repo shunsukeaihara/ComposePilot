@@ -24,7 +24,7 @@ go run ./cmd/composepilot -listen :8080 -data-dir ./data -workspace ./workspace
 ComposePilot automatically loads `.env` from the repo root if it exists.
 
 ## Install from GitHub Releases
-For a one-shot install on Linux or macOS, use:
+For a one-shot install on Linux, use:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/shunsukeaihara/ComposePilot/main/install.sh | sudo sh
@@ -34,8 +34,9 @@ Behavior:
 - Downloads the latest GitHub Release binary for the current OS/arch
 - Installs `composepilot` to `/usr/local/bin`
 - Generates a master key file if needed
-- Registers and starts a `systemd` service on Linux
-- Registers and starts a `launchd` service on macOS
+- Creates the `composepilot` user if it does not exist
+- Adds `composepilot` to the `docker` group when that group exists
+- Registers and starts a `systemd` service
 
 Optional overrides:
 
@@ -46,19 +47,20 @@ curl -fsSL https://raw.githubusercontent.com/shunsukeaihara/ComposePilot/main/in
 
 Installer variables and defaults:
 
-| Variable | Default on Linux | Default on macOS |
-| --- | --- | --- |
-| `COMPOSEPILOT_VERSION` | latest release tag | latest release tag |
-| `COMPOSEPILOT_LISTEN` | `:8080` | `:8080` |
-| `COMPOSEPILOT_BIN_DIR` | `/usr/local/bin` | `/usr/local/bin` |
-| `COMPOSEPILOT_CONFIG_DIR` | `/etc/composepilot` | `/usr/local/etc/composepilot` |
-| `COMPOSEPILOT_DATA_DIR` | `/var/lib/composepilot` | `/usr/local/var/lib/composepilot` |
-| `COMPOSEPILOT_WORKSPACE_DIR` | `${COMPOSEPILOT_DATA_DIR}/workspace` | `${COMPOSEPILOT_DATA_DIR}/workspace` |
+| Variable | Default |
+| --- | --- |
+| `COMPOSEPILOT_VERSION` | latest release tag |
+| `COMPOSEPILOT_LISTEN` | `:8080` |
+| `COMPOSEPILOT_BIN_DIR` | `/usr/local/bin` |
+| `COMPOSEPILOT_CONFIG_DIR` | `/etc/composepilot` |
+| `COMPOSEPILOT_DATA_DIR` | `/var/lib/composepilot` |
+| `COMPOSEPILOT_WORKSPACE_DIR` | `${COMPOSEPILOT_DATA_DIR}/workspace` |
 
 Notes:
 - The SQLite database path is fixed to `${COMPOSEPILOT_DATA_DIR}/composepilot.db`
 - The master key file path is fixed to `${COMPOSEPILOT_CONFIG_DIR}/master_key`
 - The environment file path is fixed to `${COMPOSEPILOT_CONFIG_DIR}/composepilot.env`
+- `install.sh` currently supports Linux only
 
 ## Auto-reload with air
 1. Install `air`:
