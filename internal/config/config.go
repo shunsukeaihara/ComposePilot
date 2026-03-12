@@ -12,11 +12,12 @@ import (
 )
 
 type Config struct {
-	ListenAddr string
-	DataDir    string
-	DBPath     string
-	Workspace  string
-	MasterKey  []byte
+	ListenAddr  string
+	DataDir     string
+	DBPath      string
+	Workspace   string
+	MasterKey   []byte
+	ShowVersion bool
 }
 
 func Load() (Config, error) {
@@ -27,7 +28,12 @@ func Load() (Config, error) {
 	listen := flag.String("listen", envOrDefault("COMPOSEPILOT_LISTEN", ":8080"), "listen address")
 	dataDir := flag.String("data-dir", envOrDefault("COMPOSEPILOT_DATA_DIR", "./data"), "data directory")
 	workspace := flag.String("workspace", envOrDefault("COMPOSEPILOT_WORKSPACE", "./workspace"), "repository workspace")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		return Config{ShowVersion: true}, nil
+	}
 
 	key, err := loadMasterKey()
 	if err != nil {

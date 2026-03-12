@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/base64"
+	"flag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -42,5 +43,27 @@ func TestLoadMasterKeyFromFile(t *testing.T) {
 	}
 	if string(got) != string(key) {
 		t.Fatalf("loadMasterKey() mismatch")
+	}
+}
+
+func TestLoadVersionFlagSkipsRuntimeSetup(t *testing.T) {
+	originalArgs := os.Args
+	originalCommandLine := flag.CommandLine
+	t.Cleanup(func() {
+		os.Args = originalArgs
+		flag.CommandLine = originalCommandLine
+	})
+
+	os.Args = []string{"composepilot", "-version"}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	t.Setenv("COMPOSEPILOT_MASTER_KEY", "")
+	t.Setenv("COMPOSEPILOT_MASTER_KEY_FILE", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.ShowVersion {
+		t.Fatalf("ShowVersion = false, want true")
 	}
 }

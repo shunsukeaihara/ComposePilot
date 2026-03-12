@@ -41,7 +41,7 @@ This repo includes a ready-to-use `.air.toml` that rebuilds on `.go` and embedde
 Use the included `Makefile` to cross-compile binaries into `dist/`.
 
 ```bash
-make dist
+make dist VERSION=0.1.0
 ```
 
 Available targets:
@@ -53,6 +53,20 @@ Available targets:
 - `make dist-windows-amd64`
 - `make dist-darwin-amd64`
 - `make dist-darwin-arm64`
+
+The binary also supports:
+
+```bash
+./dist/composepilot-linux-amd64 -version
+```
+
+## Publish GitHub release binaries
+Pushing a tag like `v0.1.0` triggers GitHub Actions to build release archives and upload them to the matching GitHub Release.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
 
 ## Production secret handling
 Recommended order:

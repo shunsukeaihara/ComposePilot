@@ -41,7 +41,7 @@ air
 付属の `Makefile` で `dist/` 配下にクロスコンパイル済みバイナリを生成できます。
 
 ```bash
-make dist
+make dist VERSION=0.1.0
 ```
 
 使えるターゲット:
@@ -53,6 +53,20 @@ make dist
 - `make dist-windows-amd64`
 - `make dist-darwin-amd64`
 - `make dist-darwin-arm64`
+
+生成されたバイナリは次のようにバージョン表示できます。
+
+```bash
+./dist/composepilot-linux-amd64 -version
+```
+
+## GitHub Releases に配布バイナリを公開する
+`v0.1.0` のようなタグを push すると、GitHub Actions が各OS向けの配布アーカイブをビルドして、同名の GitHub Release に添付します。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
 
 ## 本番環境での鍵の渡し方
 推奨順は以下です。

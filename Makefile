@@ -2,7 +2,8 @@ APP := composepilot
 DIST_DIR := dist
 MAIN_PKG := ./cmd/composepilot
 GO ?= go
-LDFLAGS := -s -w
+VERSION ?= dev
+LDFLAGS := -s -w -X main.version=$(VERSION)
 
 .PHONY: build clean dist dist-linux dist-windows dist-darwin \
 	dist-linux-amd64 dist-linux-arm64 dist-windows-amd64 dist-darwin-amd64 dist-darwin-arm64

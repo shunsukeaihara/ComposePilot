@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os/signal"
 	"syscall"
@@ -12,10 +13,16 @@ import (
 	"composepilot/internal/store"
 )
 
+var version = "dev"
+
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
+	}
+	if cfg.ShowVersion {
+		fmt.Println(version)
+		return
 	}
 	cipher, err := cryptox.New(cfg.MasterKey)
 	if err != nil {
