@@ -2,6 +2,8 @@
 
 ComposePilot は、単一 Docker ホスト上で GitHub 上の Docker Compose アプリケーションを管理するための、Go 製シングルバイナリのコントロールプレーンです。
 
+![ComposePilot screenshot](docs/screenshot.png)
+
 ## 主な機能
 - リポジトリ、ブランチ、deploy key、compose ファイル、環境変数の登録
 - サービスごとの deploy key を使った SSH clone / pull

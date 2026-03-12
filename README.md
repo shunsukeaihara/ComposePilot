@@ -2,6 +2,8 @@
 
 ComposePilot is a single-binary Go control plane for managing GitHub-hosted Docker Compose applications on a single Docker host.
 
+![ComposePilot screenshot](docs/screenshot.png)
+
 ## Features
 - Register repositories with branch, deploy key, compose files, and environment variables
 - Clone/pull repositories over SSH using per-service deploy keys
