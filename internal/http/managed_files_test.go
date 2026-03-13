@@ -26,6 +26,48 @@ func TestParseManagedFiles(t *testing.T) {
 	}
 }
 
+func TestParseComposeFilesPreservesOrderAndSkipsBlank(t *testing.T) {
+	files := parseComposeFiles([]string{"docker-compose.yml", "  ", "docker-compose.prod.yml"})
+	if len(files) != 2 {
+		t.Fatalf("len(files) = %d, want 2", len(files))
+	}
+	if files[0] != "docker-compose.yml" {
+		t.Fatalf("files[0] = %q", files[0])
+	}
+	if files[1] != "docker-compose.prod.yml" {
+		t.Fatalf("files[1] = %q", files[1])
+	}
+}
+
+func TestParseEnvRowsSkipsBlankKeysAndUsesLastDuplicate(t *testing.T) {
+	env := parseEnvRows(
+		[]string{" APP_ENV ", "", "APP_ENV", "LOG_LEVEL"},
+		[]string{" production ", "ignored", "staging", " debug "},
+	)
+	if len(env) != 2 {
+		t.Fatalf("len(env) = %d, want 2", len(env))
+	}
+	if env["APP_ENV"] != "staging" {
+		t.Fatalf("env[APP_ENV] = %q, want %q", env["APP_ENV"], "staging")
+	}
+	if env["LOG_LEVEL"] != "debug" {
+		t.Fatalf("env[LOG_LEVEL] = %q, want %q", env["LOG_LEVEL"], "debug")
+	}
+}
+
+func TestEnvPairsSortsKeys(t *testing.T) {
+	pairs := envPairs(map[string]string{
+		"Z_KEY": "z",
+		"A_KEY": "a",
+	})
+	if len(pairs) != 2 {
+		t.Fatalf("len(pairs) = %d, want 2", len(pairs))
+	}
+	if pairs[0].Key != "A_KEY" || pairs[1].Key != "Z_KEY" {
+		t.Fatalf("pairs = %#v", pairs)
+	}
+}
+
 func TestMaterializeManagedFiles(t *testing.T) {
 	workDir := t.TempDir()
 	s := &Server{}

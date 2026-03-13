@@ -47,7 +47,6 @@
     <div class="page-header">
       <div>
         <h2>New Project</h2>
-        <div class="muted">Register a repository, deploy key, branch, and compose settings.</div>
       </div>
       <a href="/" hx-get="/" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true"><button class="secondary">Back to home</button></a>
     </div>
@@ -61,17 +60,90 @@
 {{define "project-form"}}
 <form method="post" action="/projects" hx-post="/projects" hx-target="#app-main" hx-swap="outerHTML">
   <div class="grid">
-    <div class="grid two">
+    <div class="grid">
       <div><label for="create-name">Name</label><input id="create-name" name="name" value="{{with .Project}}{{.Service.Name}}{{end}}" required></div>
       <div><label for="create-branch">Branch</label><input id="create-branch" name="branch" value="{{with .Project}}{{.Service.Branch}}{{else}}main{{end}}" required></div>
     </div>
-    <div class="grid two">
+    <div class="grid">
       <div><label for="create-repo">Repo URL</label><input id="create-repo" name="repoUrl" value="{{with .Project}}{{.Service.RepoURL}}{{end}}" placeholder="git@github.com:org/repo.git" required></div>
       <div><label for="create-workdir">Work dir</label><input id="create-workdir" name="workDir" value="{{with .Project}}{{displayWorkDir .Service.WorkDir}}{{end}}" placeholder="optional relative path"></div>
     </div>
-    <div class="grid two">
-      <div><label for="create-compose">Compose files (one per line)</label><textarea id="create-compose" name="composeFiles" required>{{with .Project}}{{joinLines .Service.ComposeFiles}}{{else}}docker-compose.yml{{end}}</textarea></div>
-      <div><label for="create-env">Environment (KEY=VALUE per line)</label><textarea id="create-env" name="environment">{{with .Project}}{{envText .Service.Environment}}{{end}}</textarea></div>
+    <div class="grid">
+      <div>
+        <label>Compose files</label>
+        <div class="compose-files-editor" data-compose-files>
+          <div class="compose-file-tags" data-compose-files-list>
+            {{with .Project}}
+            {{range $file := composeFilesOrDefault .Service.ComposeFiles}}
+            <div class="compose-file-tag" data-compose-file-item>
+              <input type="hidden" name="composeFile" value="{{$file}}" data-compose-file-value>
+              <span class="compose-file-name">{{$file}}</span>
+              <div class="inline-actions">
+                <button class="secondary" type="button" data-compose-file-move="left" aria-label="Move left">←</button>
+                <button class="secondary" type="button" data-compose-file-move="right" aria-label="Move right">→</button>
+                <button class="secondary" type="button" data-compose-file-remove>Remove</button>
+              </div>
+            </div>
+            {{end}}
+            {{else}}
+            <div class="compose-file-tag" data-compose-file-item>
+              <input type="hidden" name="composeFile" value="docker-compose.yml" data-compose-file-value>
+              <span class="compose-file-name">docker-compose.yml</span>
+              <div class="inline-actions">
+                <button class="secondary" type="button" data-compose-file-move="left" aria-label="Move left">←</button>
+                <button class="secondary" type="button" data-compose-file-move="right" aria-label="Move right">→</button>
+                <button class="secondary" type="button" data-compose-file-remove>Remove</button>
+              </div>
+            </div>
+            {{end}}
+          </div>
+          <div class="editor-add-card compose-file-add">
+            <div class="stack-xs">
+              <strong>Add compose file</strong>
+            </div>
+            <div class="compose-file-add-row">
+              <input id="create-compose" type="text" placeholder="docker-compose.override.yml" data-compose-file-input>
+              <button class="secondary" type="button" data-compose-file-add>Add file</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label>Environment Variables</label>
+        <div class="env-editor" data-env-editor>
+          <div class="grid" data-env-list>
+            {{with .Project}}
+            {{range envPairs .Service.Environment}}
+            <div class="env-row surface {{if .Key}}collapsed{{end}}" data-env-row>
+              <div class="inline-actions env-summary">
+                <div class="env-key-label" data-env-label>{{if .Key}}{{.Key}}{{else}}New variable{{end}}</div>
+                <div class="inline-actions">
+                  <button class="secondary" type="button" data-env-toggle>{{if .Key}}Edit{{else}}Collapse{{end}}</button>
+                  <button class="secondary" type="button" data-env-remove>Remove</button>
+                </div>
+              </div>
+              <div class="env-fields" data-env-fields>
+                <div class="grid two">
+                  <div><label>Key</label><input name="envKey" value="{{.Key}}" placeholder="APP_ENV"></div>
+                  <div><label>Value</label><input name="envValue" value="{{.Value}}" placeholder="production"></div>
+                </div>
+              </div>
+            </div>
+            {{end}}
+            {{end}}
+          </div>
+          <div class="editor-add-card env-add-card">
+            <div class="stack-xs">
+              <strong>Add environment variable</strong>
+            </div>
+            <div class="grid two">
+              <div><label>Key</label><input placeholder="APP_ENV" data-env-draft-key></div>
+              <div><label>Value</label><input placeholder="production" data-env-draft-value></div>
+            </div>
+            <button class="secondary" type="button" data-env-add>Add variable</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="grid">
       <div class="section-header">
@@ -80,7 +152,7 @@
       <div class="managed-files-editor" data-managed-files>
         <div class="grid" data-managed-files-list>
           {{if .Project}}
-          {{range managedFilesOrBlank .Project.Service.ManagedFiles}}
+          {{range managedFilesList .Project.Service.ManagedFiles}}
           <div class="managed-file-row surface {{if .Path}}collapsed{{end}}" data-managed-file-row>
             <div class="inline-actions managed-file-summary">
               <div class="managed-file-path" data-managed-file-label>{{if .Path}}{{.Path}}{{else}}New file{{end}}</div>
@@ -97,25 +169,18 @@
             </div>
           </div>
           {{end}}
-          {{else}}
-          <div class="managed-file-row surface" data-managed-file-row>
-            <div class="inline-actions managed-file-summary">
-              <div class="managed-file-path" data-managed-file-label>New file</div>
-              <div class="inline-actions">
-                <button class="secondary managed-file-toggle" type="button" data-managed-file-toggle>Collapse</button>
-                <button class="secondary managed-file-remove" type="button" data-managed-file-remove>Remove</button>
-              </div>
-            </div>
-            <div class="managed-file-fields" data-managed-file-fields>
-              <label>Relative path</label>
-              <input name="managedFilePath" placeholder="config/app.conf">
-              <label>Content</label>
-              <textarea name="managedFileContent" placeholder="key=value"></textarea>
-            </div>
-          </div>
           {{end}}
         </div>
-        <button class="secondary" type="button" data-managed-file-add>Add file</button>
+        <div class="editor-add-card managed-file-add-card">
+          <div class="stack-xs">
+            <strong>Add managed file</strong>
+          </div>
+          <div class="grid">
+            <div><label>Relative path</label><input placeholder="config/app.conf" data-managed-file-draft-path></div>
+            <div><label>Content</label><textarea placeholder="key=value" data-managed-file-draft-content></textarea></div>
+          </div>
+          <button class="secondary" type="button" data-managed-file-add>Add file</button>
+        </div>
       </div>
     </div>
     <div><label for="create-key">Deploy key</label><textarea id="create-key" name="deployKey" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea></div>
@@ -237,17 +302,76 @@
   <div class="section-header"><h3>Project Settings</h3></div>
   <form method="post" action="/projects/{{.Project.Service.ID}}/settings" hx-post="/projects/{{.Project.Service.ID}}/settings" hx-target="#app-main" hx-swap="outerHTML">
     <div class="grid">
-      <div class="grid two">
+      <div class="grid">
         <div><label>Name</label><input name="name" value="{{.Project.Service.Name}}" required></div>
         <div><label>Branch</label><input name="branch" value="{{.Project.Service.Branch}}" required></div>
       </div>
-      <div class="grid two">
+      <div class="grid">
         <div><label>Repo URL</label><input name="repoUrl" value="{{.Project.Service.RepoURL}}" required></div>
         <div><label>Work dir</label><input name="workDir" value="{{displayWorkDir .Project.Service.WorkDir}}"></div>
       </div>
-      <div class="grid two">
-        <div><label>Compose files</label><textarea name="composeFiles" required>{{joinLines .Project.Service.ComposeFiles}}</textarea></div>
-        <div><label>Environment</label><textarea name="environment">{{envText .Project.Service.Environment}}</textarea></div>
+      <div class="grid">
+        <div>
+          <label>Compose files</label>
+          <div class="compose-files-editor" data-compose-files>
+            <div class="compose-file-tags" data-compose-files-list>
+              {{range $file := composeFilesOrDefault .Project.Service.ComposeFiles}}
+              <div class="compose-file-tag" data-compose-file-item>
+                <input type="hidden" name="composeFile" value="{{$file}}" data-compose-file-value>
+                <span class="compose-file-name">{{$file}}</span>
+                <div class="inline-actions">
+                  <button class="secondary" type="button" data-compose-file-move="left" aria-label="Move left">←</button>
+                  <button class="secondary" type="button" data-compose-file-move="right" aria-label="Move right">→</button>
+                  <button class="secondary" type="button" data-compose-file-remove>Remove</button>
+                </div>
+              </div>
+              {{end}}
+            </div>
+            <div class="editor-add-card compose-file-add">
+              <div class="stack-xs">
+                <strong>Add compose file</strong>
+              </div>
+              <div class="compose-file-add-row">
+                <input type="text" placeholder="docker-compose.override.yml" data-compose-file-input>
+                <button class="secondary" type="button" data-compose-file-add>Add file</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label>Environment Variables</label>
+          <div class="env-editor" data-env-editor>
+            <div class="grid" data-env-list>
+              {{range envPairs .Project.Service.Environment}}
+              <div class="env-row surface {{if .Key}}collapsed{{end}}" data-env-row>
+                <div class="inline-actions env-summary">
+                  <div class="env-key-label" data-env-label>{{if .Key}}{{.Key}}{{else}}New variable{{end}}</div>
+                  <div class="inline-actions">
+                    <button class="secondary" type="button" data-env-toggle>{{if .Key}}Edit{{else}}Collapse{{end}}</button>
+                    <button class="secondary" type="button" data-env-remove>Remove</button>
+                  </div>
+                </div>
+                <div class="env-fields" data-env-fields>
+                  <div class="grid two">
+                    <div><label>Key</label><input name="envKey" value="{{.Key}}" placeholder="APP_ENV"></div>
+                    <div><label>Value</label><input name="envValue" value="{{.Value}}" placeholder="production"></div>
+                  </div>
+                </div>
+              </div>
+              {{end}}
+            </div>
+            <div class="editor-add-card env-add-card">
+              <div class="stack-xs">
+                <strong>Add environment variable</strong>
+              </div>
+              <div class="grid two">
+                <div><label>Key</label><input placeholder="APP_ENV" data-env-draft-key></div>
+                <div><label>Value</label><input placeholder="production" data-env-draft-value></div>
+              </div>
+              <button class="secondary" type="button" data-env-add>Add variable</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="grid">
         <div class="section-header">
@@ -255,7 +379,7 @@
         </div>
         <div class="managed-files-editor" data-managed-files>
           <div class="grid" data-managed-files-list>
-            {{range managedFilesOrBlank .Project.Service.ManagedFiles}}
+            {{range managedFilesList .Project.Service.ManagedFiles}}
             <div class="managed-file-row surface {{if .Path}}collapsed{{end}}" data-managed-file-row>
               <div class="inline-actions managed-file-summary">
                 <div class="managed-file-path" data-managed-file-label>{{if .Path}}{{.Path}}{{else}}New file{{end}}</div>
@@ -273,7 +397,16 @@
             </div>
             {{end}}
           </div>
-          <button class="secondary" type="button" data-managed-file-add>Add file</button>
+          <div class="editor-add-card managed-file-add-card">
+            <div class="stack-xs">
+              <strong>Add managed file</strong>
+            </div>
+            <div class="grid">
+              <div><label>Relative path</label><input placeholder="config/app.conf" data-managed-file-draft-path></div>
+              <div><label>Content</label><textarea placeholder="key=value" data-managed-file-draft-content></textarea></div>
+            </div>
+            <button class="secondary" type="button" data-managed-file-add>Add file</button>
+          </div>
         </div>
       </div>
       <div><label>Deploy key (leave blank to keep current)</label><textarea name="deployKey"></textarea></div>

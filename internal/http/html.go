@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -17,11 +18,13 @@ import (
 var templateFS embed.FS
 
 var pageTemplates = template.Must(template.New("pages").Funcs(template.FuncMap{
-	"joinLines":           func(values []string) string { return strings.Join(values, "\n") },
-	"joinComma":           func(values []string) string { return strings.Join(values, ", ") },
-	"envText":             envText,
-	"managedFilesOrBlank": managedFilesOrBlank,
-	"displayWorkDir":      displayWorkDir,
+	"joinLines":             func(values []string) string { return strings.Join(values, "\n") },
+	"joinComma":             func(values []string) string { return strings.Join(values, ", ") },
+	"envText":               envText,
+	"envPairs":              envPairs,
+	"composeFilesOrDefault": composeFilesOrDefault,
+	"managedFilesList":      managedFilesList,
+	"displayWorkDir":        displayWorkDir,
 	"badgeClass": func(state, status string) string {
 		value := strings.ToLower(strings.TrimSpace(state + " " + status))
 		switch {
@@ -53,6 +56,11 @@ type projectViewData struct {
 	DeployOutput      string
 }
 
+type envPair struct {
+	Key   string
+	Value string
+}
+
 func envText(env map[string]string) string {
 	if len(env) == 0 {
 		return ""
@@ -64,11 +72,34 @@ func envText(env map[string]string) string {
 	return strings.Join(lines, "\n")
 }
 
-func managedFilesOrBlank(files []models.ManagedFile) []models.ManagedFile {
+func envPairs(env map[string]string) []envPair {
+	if len(env) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(env))
+	for key := range env {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	pairs := make([]envPair, 0, len(keys))
+	for _, key := range keys {
+		pairs = append(pairs, envPair{Key: key, Value: env[key]})
+	}
+	return pairs
+}
+
+func composeFilesOrDefault(files []string) []string {
 	if len(files) > 0 {
 		return files
 	}
-	return []models.ManagedFile{{}}
+	return []string{"docker-compose.yml"}
+}
+
+func managedFilesList(files []models.ManagedFile) []models.ManagedFile {
+	if len(files) == 0 {
+		return nil
+	}
+	return files
 }
 
 func displayWorkDir(workDir string) string {
@@ -357,11 +388,23 @@ func (s *Server) serviceRequestFromForm(r *http.Request) (serviceRequest, error)
 		RepoURL:      strings.TrimSpace(r.FormValue("repoUrl")),
 		Branch:       strings.TrimSpace(r.FormValue("branch")),
 		WorkDir:      strings.TrimSpace(r.FormValue("workDir")),
-		ComposeFiles: splitNonEmptyLines(r.FormValue("composeFiles")),
-		Environment:  parseEnvLines(r.FormValue("environment")),
+		ComposeFiles: parseComposeFiles(r.Form["composeFile"]),
+		Environment:  parseEnvRows(r.Form["envKey"], r.Form["envValue"]),
 		ManagedFiles: parseManagedFiles(r.Form["managedFilePath"], r.Form["managedFileContent"]),
 		DeployKey:    r.FormValue("deployKey"),
 	}, nil
+}
+
+func parseComposeFiles(values []string) []string {
+	files := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		files = append(files, value)
+	}
+	return files
 }
 
 func splitNonEmptyLines(value string) []string {
@@ -382,6 +425,28 @@ func parseEnvLines(value string) map[string]string {
 		if ok {
 			env[strings.TrimSpace(key)] = strings.TrimSpace(val)
 		}
+	}
+	return env
+}
+
+func parseEnvRows(keys, values []string) map[string]string {
+	env := map[string]string{}
+	maxLen := len(keys)
+	if len(values) > maxLen {
+		maxLen = len(values)
+	}
+	for i := 0; i < maxLen; i++ {
+		var key, value string
+		if i < len(keys) {
+			key = strings.TrimSpace(keys[i])
+		}
+		if i < len(values) {
+			value = strings.TrimSpace(values[i])
+		}
+		if key == "" {
+			continue
+		}
+		env[key] = value
 	}
 	return env
 }
