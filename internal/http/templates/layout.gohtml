@@ -350,6 +350,81 @@
       display: grid;
       gap: var(--space-3);
     }
+    .env-editor {
+      display: grid;
+      gap: var(--space-3);
+    }
+    .editor-add-card {
+      display: grid;
+      gap: var(--space-3);
+      padding: var(--surface-padding);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: var(--radius-md);
+      background: rgba(15, 23, 42, 0.42);
+    }
+    .env-row {
+      display: grid;
+      gap: var(--space-2);
+    }
+    .env-summary {
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+    .env-key-label {
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+    .env-fields {
+      display: grid;
+      gap: var(--space-2);
+    }
+    .env-row.collapsed .env-fields {
+      display: none;
+    }
+    .compose-files-editor {
+      display: grid;
+      gap: var(--space-3);
+    }
+    .compose-file-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+    .compose-file-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(30, 41, 59, 0.92);
+      max-width: 100%;
+    }
+    .compose-file-name {
+      font-size: 13px;
+      font-weight: 600;
+      word-break: break-all;
+    }
+    .compose-file-tag .inline-actions {
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+    .compose-file-tag button {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .compose-file-add {
+      display: grid;
+      gap: var(--space-2);
+    }
+    .compose-file-add-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-2);
+      align-items: center;
+    }
     .managed-file-row {
       display: grid;
       gap: var(--space-2);
@@ -736,6 +811,8 @@
         window.repoRunnerContainersPoller = null;
       }
       wireManagedFiles(main);
+      wireEnvironmentEditors(main);
+      wireComposeFilesEditors(main);
       wireLogs(main);
       wireExec(main);
       wireDeployActions(main);
@@ -748,14 +825,16 @@
         editor.dataset.wired = 'true';
         const list = editor.querySelector('[data-managed-files-list]');
         const addButton = editor.querySelector('[data-managed-file-add]');
-        if (!list || !addButton) return;
+        const draftPath = editor.querySelector('[data-managed-file-draft-path]');
+        const draftContent = editor.querySelector('[data-managed-file-draft-content]');
+        if (!list || !addButton || !draftPath || !draftContent) return;
 
         const template = () => [
-          '<div class="managed-file-row surface" data-managed-file-row>',
+          '<div class="managed-file-row surface collapsed" data-managed-file-row>',
           '<div class="inline-actions managed-file-summary">',
           '<div class="managed-file-path" data-managed-file-label>New file</div>',
           '<div class="inline-actions">',
-          '<button class="secondary managed-file-toggle" type="button" data-managed-file-toggle>Collapse</button>',
+          '<button class="secondary managed-file-toggle" type="button" data-managed-file-toggle>Edit</button>',
           '<button class="secondary managed-file-remove" type="button" data-managed-file-remove>Remove</button>',
           '</div>',
           '</div>',
@@ -767,6 +846,8 @@
           '</div>',
           '</div>',
         ].join('');
+
+        const emptyMarkup = '<div class="empty" data-managed-file-empty>No managed files added yet.</div>';
 
         const syncManagedFileRow = (row) => {
           if (!row) return;
@@ -784,9 +865,34 @@
 
         list.querySelectorAll('[data-managed-file-row]').forEach(syncManagedFileRow);
 
+        const ensureEmptyState = () => {
+          const hasRows = list.querySelector('[data-managed-file-row]');
+          const empty = list.querySelector('[data-managed-file-empty]');
+          if (hasRows && empty) {
+            empty.remove();
+          }
+          if (!hasRows && !empty) {
+            list.insertAdjacentHTML('beforeend', emptyMarkup);
+          }
+        };
+
+        ensureEmptyState();
+
         addButton.addEventListener('click', () => {
+          const path = draftPath.value.trim();
+          const content = draftContent.value;
+          if (!path) return;
+          const empty = list.querySelector('[data-managed-file-empty]');
+          if (empty) empty.remove();
           list.insertAdjacentHTML('beforeend', template());
-          syncManagedFileRow(list.lastElementChild);
+          const row = list.lastElementChild;
+          const pathInput = row.querySelector('input[name="managedFilePath"]');
+          const contentInput = row.querySelector('textarea[name="managedFileContent"]');
+          if (pathInput) pathInput.value = path;
+          if (contentInput) contentInput.value = content;
+          syncManagedFileRow(row);
+          draftPath.value = '';
+          draftContent.value = '';
         });
 
         editor.addEventListener('input', (event) => {
@@ -808,31 +914,212 @@
           const button = event.target.closest('[data-managed-file-remove]');
           if (!button) return;
           event.preventDefault();
-          const rows = list.querySelectorAll('.managed-file-row');
-          if (rows.length <= 1) {
-            const row = rows[0];
-            if (!row) return;
-            const pathInput = row.querySelector('input[name=\"managedFilePath\"]');
-            const contentInput = row.querySelector('textarea[name=\"managedFileContent\"]');
-            if (pathInput) pathInput.value = '';
-            if (contentInput) contentInput.value = '';
-            row.classList.remove('collapsed');
-            syncManagedFileRow(row);
-            return;
-          }
           button.closest('.managed-file-row')?.remove();
+          ensureEmptyState();
         });
       });
     }
 
-    function renderContainers(panel, containers) {
-      if (!panel) return;
-      const escapeHtml = (value) => String(value || '')
+    function wireEnvironmentEditors(main) {
+      main.querySelectorAll('[data-env-editor]').forEach((editor) => {
+        if (editor.dataset.wired === 'true') return;
+        editor.dataset.wired = 'true';
+        const list = editor.querySelector('[data-env-list]');
+        const addButton = editor.querySelector('[data-env-add]');
+        const draftKey = editor.querySelector('[data-env-draft-key]');
+        const draftValue = editor.querySelector('[data-env-draft-value]');
+        if (!list || !addButton || !draftKey || !draftValue) return;
+
+        const template = () => [
+          '<div class="env-row surface collapsed" data-env-row>',
+          '<div class="inline-actions env-summary">',
+          '<div class="env-key-label" data-env-label>New variable</div>',
+          '<div class="inline-actions">',
+          '<button class="secondary" type="button" data-env-toggle>Edit</button>',
+          '<button class="secondary" type="button" data-env-remove>Remove</button>',
+          '</div>',
+          '</div>',
+          '<div class="env-fields" data-env-fields>',
+          '<div class="grid two">',
+          '<div><label>Key</label><input name="envKey" placeholder="APP_ENV"></div>',
+          '<div><label>Value</label><input name="envValue" placeholder="production"></div>',
+          '</div>',
+          '</div>',
+          '</div>',
+        ].join('');
+
+        const emptyMarkup = '<div class="empty" data-env-empty>No environment variables added yet.</div>';
+
+        const ensureEmptyState = () => {
+          const hasRows = list.querySelector('[data-env-row]');
+          const empty = list.querySelector('[data-env-empty]');
+          if (hasRows && empty) {
+            empty.remove();
+          }
+          if (!hasRows && !empty) {
+            list.insertAdjacentHTML('beforeend', emptyMarkup);
+          }
+        };
+
+        const syncEnvRow = (row) => {
+          if (!row) return;
+          const keyInput = row.querySelector('input[name="envKey"]');
+          const label = row.querySelector('[data-env-label]');
+          const toggle = row.querySelector('[data-env-toggle]');
+          const key = keyInput ? keyInput.value.trim() : '';
+          if (label) {
+            label.textContent = key || 'New variable';
+          }
+          if (toggle) {
+            toggle.textContent = row.classList.contains('collapsed') ? 'Edit' : 'Collapse';
+          }
+        };
+
+        list.querySelectorAll('[data-env-row]').forEach(syncEnvRow);
+        ensureEmptyState();
+
+        addButton.addEventListener('click', () => {
+          const key = draftKey.value.trim();
+          const value = draftValue.value.trim();
+          if (!key) return;
+          const empty = list.querySelector('[data-env-empty]');
+          if (empty) empty.remove();
+          list.insertAdjacentHTML('beforeend', template());
+          const row = list.lastElementChild;
+          const keyInput = row.querySelector('input[name="envKey"]');
+          const valueInput = row.querySelector('input[name="envValue"]');
+          if (keyInput) keyInput.value = key;
+          if (valueInput) valueInput.value = value;
+          syncEnvRow(row);
+          draftKey.value = '';
+          draftValue.value = '';
+        });
+
+        draftValue.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          addButton.click();
+        });
+
+        editor.addEventListener('input', (event) => {
+          const row = event.target.closest('[data-env-row]');
+          if (!row) return;
+          syncEnvRow(row);
+        });
+
+        editor.addEventListener('click', (event) => {
+          const toggle = event.target.closest('[data-env-toggle]');
+          if (toggle) {
+            event.preventDefault();
+            const row = toggle.closest('[data-env-row]');
+            if (!row) return;
+            row.classList.toggle('collapsed');
+            syncEnvRow(row);
+            return;
+          }
+          const remove = event.target.closest('[data-env-remove]');
+          if (!remove) return;
+          event.preventDefault();
+          remove.closest('[data-env-row]')?.remove();
+          ensureEmptyState();
+        });
+      });
+    }
+
+    function wireComposeFilesEditors(main) {
+      main.querySelectorAll('[data-compose-files]').forEach((editor) => {
+        if (editor.dataset.wired === 'true') return;
+        editor.dataset.wired = 'true';
+        const list = editor.querySelector('[data-compose-files-list]');
+        const input = editor.querySelector('[data-compose-file-input]');
+        const addButton = editor.querySelector('[data-compose-file-add]');
+        if (!list || !input || !addButton) return;
+
+        const createTag = (value) => [
+          '<div class="compose-file-tag" data-compose-file-item>',
+          `<input type="hidden" name="composeFile" value="${escapeHtml(value)}" data-compose-file-value>`,
+          `<span class="compose-file-name">${escapeHtml(value)}</span>`,
+          '<div class="inline-actions">',
+          '<button class="secondary" type="button" data-compose-file-move="left" aria-label="Move left">←</button>',
+          '<button class="secondary" type="button" data-compose-file-move="right" aria-label="Move right">→</button>',
+          '<button class="secondary" type="button" data-compose-file-remove>Remove</button>',
+          '</div>',
+          '</div>',
+        ].join('');
+
+        const emptyMarkup = '<div class="empty" data-compose-empty>No compose files added yet.</div>';
+
+        const syncComposeState = () => {
+          const items = list.querySelectorAll('[data-compose-file-item]');
+          const empty = list.querySelector('[data-compose-empty]');
+          if (items.length === 0 && !empty) {
+            list.insertAdjacentHTML('beforeend', emptyMarkup);
+          }
+          if (items.length > 0 && empty) {
+            empty.remove();
+          }
+          items.forEach((item, index) => {
+            const left = item.querySelector('[data-compose-file-move="left"]');
+            const right = item.querySelector('[data-compose-file-move="right"]');
+            if (left) left.disabled = index === 0;
+            if (right) right.disabled = index === items.length - 1;
+          });
+        };
+
+        const addComposeFile = () => {
+          const value = input.value.trim();
+          if (!value) return;
+          const empty = list.querySelector('[data-compose-empty]');
+          if (empty) empty.remove();
+          list.insertAdjacentHTML('beforeend', createTag(value));
+          input.value = '';
+          syncComposeState();
+        };
+
+        addButton.addEventListener('click', addComposeFile);
+        input.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          addComposeFile();
+        });
+
+        editor.addEventListener('click', (event) => {
+          const remove = event.target.closest('[data-compose-file-remove]');
+          if (remove) {
+            event.preventDefault();
+            remove.closest('[data-compose-file-item]')?.remove();
+            syncComposeState();
+            return;
+          }
+          const move = event.target.closest('[data-compose-file-move]');
+          if (!move) return;
+          event.preventDefault();
+          const item = move.closest('[data-compose-file-item]');
+          if (!item) return;
+          if (move.dataset.composeFileMove === 'left' && item.previousElementSibling) {
+            item.parentNode.insertBefore(item, item.previousElementSibling);
+          }
+          if (move.dataset.composeFileMove === 'right' && item.nextElementSibling) {
+            item.parentNode.insertBefore(item.nextElementSibling, item);
+          }
+          syncComposeState();
+        });
+
+        syncComposeState();
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
+    }
+
+    function renderContainers(panel, containers) {
+      if (!panel) return;
       if (!containers || containers.length === 0) {
         panel.innerHTML = '<div class="empty">No containers found for this project.</div>';
         return;
