@@ -34,61 +34,6 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-func (s *Store) migrate() error {
-	const schema = `
-CREATE TABLE IF NOT EXISTS services (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    repo_url TEXT NOT NULL,
-    branch TEXT NOT NULL,
-    work_dir TEXT NOT NULL,
-    compose_files_json TEXT NOT NULL,
-    env_json TEXT NOT NULL,
-    managed_files_json TEXT NOT NULL DEFAULT '[]',
-    ssh_key_encrypted TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-);`
-	if _, err := s.db.Exec(schema); err != nil {
-		return fmt.Errorf("migrate db: %w", err)
-	}
-	if err := s.ensureColumn("services", "managed_files_json", "ALTER TABLE services ADD COLUMN managed_files_json TEXT NOT NULL DEFAULT '[]'"); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *Store) ensureColumn(table, column, alter string) error {
-	rows, err := s.db.Query("PRAGMA table_info(" + table + ")")
-	if err != nil {
-		return fmt.Errorf("pragma table_info(%s): %w", table, err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var (
-			cid       int
-			name      string
-			typ       string
-			notnull   int
-			dfltValue sql.NullString
-			pk        int
-		)
-		if err := rows.Scan(&cid, &name, &typ, &notnull, &dfltValue, &pk); err != nil {
-			return fmt.Errorf("scan table_info(%s): %w", table, err)
-		}
-		if name == column {
-			return nil
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterate table_info(%s): %w", table, err)
-	}
-	if _, err := s.db.Exec(alter); err != nil {
-		return fmt.Errorf("alter table %s add %s: %w", table, column, err)
-	}
-	return nil
-}
 
 func (s *Store) CreateService(ctx context.Context, svc models.Service) (models.Service, error) {
 	now := time.Now().UTC()
