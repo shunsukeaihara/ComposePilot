@@ -9,3 +9,7 @@ dist/
 *.db-journal
 .env
 dev/master_key
+
+# Subdirectory CLAUDE.md
+**/CLAUDE.md
+!/CLAUDE.md
