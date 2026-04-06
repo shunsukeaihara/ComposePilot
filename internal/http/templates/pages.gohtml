@@ -494,6 +494,121 @@
 </div>
 {{end}}
 
+{{define "content-monitoring"}}
+<main id="app-main" class="content" data-page="monitoring">
+  {{if .Flash}}<div class="flash">{{.Flash}}</div>{{end}}
+  <section class="grid">
+    <div class="page-header">
+      <div><h2>Monitoring</h2></div>
+      <a href="/settings/monitoring" hx-get="/settings/monitoring" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true"><button class="secondary">Refresh</button></a>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3 class="panel-title">General</h3></div>
+      <form method="post" action="/settings/monitoring" hx-post="/settings/monitoring" hx-target="#app-main" hx-swap="outerHTML">
+        <div class="grid three">
+          <div>
+            <label>Enable monitoring</label>
+            <label class="switch-field">
+              <span class="switch">
+                <input id="monitoring-enabled" type="checkbox" name="enabled" {{if and .MonitorSettings .MonitorSettings.Enabled}}checked{{end}}>
+                <span class="switch-slider"></span>
+              </span>
+              <span>Active</span>
+            </label>
+          </div>
+          <div>
+            <label for="monitoring-interval">Poll interval (seconds)</label>
+            <input id="monitoring-interval" type="number" name="intervalSeconds" min="5" value="{{if .MonitorSettings}}{{.MonitorSettings.IntervalSeconds}}{{else}}60{{end}}">
+          </div>
+          <div>
+            <label for="monitoring-confirm">Confirm after N consecutive polls</label>
+            <input id="monitoring-confirm" type="number" name="confirmThreshold" min="1" value="{{if .MonitorSettings}}{{.MonitorSettings.ConfirmThreshold}}{{else}}2{{end}}">
+          </div>
+        </div>
+        <div class="inline-actions" style="margin-top: 12px;"><button type="submit">Save</button></div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3 class="panel-title">Notification targets</h3></div>
+      <div class="card-list">
+        {{if .NotificationTargets}}
+          {{range .NotificationTargets}}
+            <form class="surface" method="post" action="/settings/monitoring/targets" hx-post="/settings/monitoring/targets" hx-target="#app-main" hx-swap="outerHTML">
+              <input type="hidden" name="id" value="{{.ID}}">
+              <div class="grid two">
+                <div><label>Name</label><input name="name" value="{{.Name}}" required></div>
+                <div>
+                  <label>Type</label>
+                  <select name="type">
+                    <option value="discord" {{if eq .Type "discord"}}selected{{end}}>Discord</option>
+                    <option value="slack" {{if eq .Type "slack"}}selected{{end}}>Slack</option>
+                    <option value="zapier" {{if eq .Type "zapier"}}selected{{end}}>Zapier / Generic</option>
+                  </select>
+                </div>
+              </div>
+              <div><label>Webhook URL (leave blank to keep current)</label><input name="webhookUrl" type="password" placeholder="••••••••"></div>
+              <div><label>Template (JSON, Go text/template; vars: .Service .Container .Event .Prev .Curr .Timestamp .Message; use {{"{{"}}js .X{{"}}"}} for JSON string escaping)</label><textarea name="template" rows="4">{{.Template}}</textarea></div>
+              <div class="inline-actions" style="margin-top: 8px;">
+                <label class="switch-field"><span class="switch"><input type="checkbox" name="enabled" {{if .Enabled}}checked{{end}}><span class="switch-slider"></span></span>Enabled</label>
+                <button type="submit" name="action" value="update">Save</button>
+                <button type="submit" class="secondary" name="action" value="test">Send test</button>
+                <button type="submit" class="danger" name="action" value="delete" onclick="return confirm('Delete this notification target?');">Delete</button>
+              </div>
+            </form>
+          {{end}}
+        {{else}}
+          <div class="empty">No notification targets configured.</div>
+        {{end}}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3 class="panel-title">Add notification target</h3></div>
+      <form method="post" action="/settings/monitoring/targets" hx-post="/settings/monitoring/targets" hx-target="#app-main" hx-swap="outerHTML">
+        <input type="hidden" name="action" value="create">
+        <div class="grid two">
+          <div><label>Name</label><input name="name" placeholder="prod-alerts" required></div>
+          <div>
+            <label>Type</label>
+            <select name="type" data-target-type>
+              <option value="discord">Discord</option>
+              <option value="slack">Slack</option>
+              <option value="zapier">Zapier / Generic</option>
+            </select>
+          </div>
+        </div>
+        <div><label>Webhook URL</label><input name="webhookUrl" placeholder="https://..." required></div>
+        <div><label>Template (optional — default is used if blank)</label><textarea name="template" rows="4" data-target-template placeholder="{{.DiscordTemplate}}"></textarea></div>
+        <div class="inline-actions" style="margin-top: 8px;">
+          <label class="switch-field"><span class="switch"><input type="checkbox" name="enabled" checked><span class="switch-slider"></span></span>Enabled</label>
+          <button type="submit">Create</button>
+        </div>
+      </form>
+      <div class="muted" style="margin-top: 12px;">
+        <div>Default Discord template: <code>{{.DiscordTemplate}}</code></div>
+        <div>Default Slack template: <code>{{.SlackTemplate}}</code></div>
+        <div>Default Zapier template: <code>{{.ZapierTemplate}}</code></div>
+      </div>
+    </div>
+  </section>
+  <script>
+    (function(){
+      const sel = document.querySelector('[data-target-type]');
+      const ta  = document.querySelector('[data-target-template]');
+      if (!sel || !ta) return;
+      const defaults = {
+        discord: {{.DiscordTemplate}},
+        slack: {{.SlackTemplate}},
+        zapier: {{.ZapierTemplate}}
+      };
+      sel.addEventListener('change', () => { ta.placeholder = defaults[sel.value] || ''; });
+    })();
+  </script>
+</main>
+{{end}}
+
 {{define "content-networks"}}
 <main id="app-main" class="content" data-page="networks">
   {{if .Flash}}<div class="flash">{{.Flash}}</div>{{end}}

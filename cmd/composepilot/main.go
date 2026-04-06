@@ -9,7 +9,9 @@ import (
 
 	"composepilot/internal/config"
 	cryptox "composepilot/internal/crypto"
+	"composepilot/internal/dockerops"
 	httphandler "composepilot/internal/http"
+	"composepilot/internal/monitor"
 	"composepilot/internal/store"
 )
 
@@ -38,6 +40,10 @@ func main() {
 	defer stop()
 
 	server := httphandler.NewServer(cfg, st, cipher)
+
+	mon := monitor.New(st, dockerops.NewRunner(), cipher, server.ResolveServiceWorkDir)
+	go mon.Run(ctx)
+
 	if err := server.Run(ctx); err != nil {
 		log.Fatal(err)
 	}

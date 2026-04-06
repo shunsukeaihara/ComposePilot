@@ -38,6 +38,31 @@ type Container struct {
 	State   string `json:"state"`
 	Status  string `json:"status"`
 	Service string `json:"service"`
+	Health  string `json:"health"`
+}
+
+const (
+	NotificationTypeDiscord = "discord"
+	NotificationTypeSlack   = "slack"
+	NotificationTypeZapier  = "zapier"
+)
+
+type NotificationTarget struct {
+	ID                  int64     `json:"id"`
+	Type                string    `json:"type"`
+	Name                string    `json:"name"`
+	WebhookURL          string    `json:"webhookUrl,omitempty"`
+	EncryptedWebhookURL string    `json:"-"`
+	Template            string    `json:"template"`
+	Enabled             bool      `json:"enabled"`
+	CreatedAt           time.Time `json:"createdAt"`
+	UpdatedAt           time.Time `json:"updatedAt"`
+}
+
+type MonitorSettings struct {
+	Enabled          bool `json:"enabled"`
+	IntervalSeconds  int  `json:"intervalSeconds"`
+	ConfirmThreshold int  `json:"confirmThreshold"`
 }
 
 type DockerNetwork struct {

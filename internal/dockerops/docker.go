@@ -85,6 +85,7 @@ func (r *Runner) ListContainers(ctx context.Context, workDir string, composeFile
 			State   string `json:"State"`
 			Status  string `json:"Status"`
 			Service string `json:"Service"`
+			Health  string `json:"Health"`
 		}
 		if err := json.Unmarshal(line, &item); err != nil {
 			return nil, fmt.Errorf("parse compose ps: %w", err)

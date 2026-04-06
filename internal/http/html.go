@@ -39,13 +39,18 @@ var pageTemplates = template.Must(template.New("pages").Funcs(template.FuncMap{
 }).ParseFS(templateFS, "templates/*.gohtml"))
 
 type viewData struct {
-	Title           string
-	ContentTemplate string
-	Workspace       string
-	Services        []models.Service
-	Networks        []models.DockerNetwork
-	Project         *projectViewData
-	Flash           string
+	Title               string
+	ContentTemplate     string
+	Workspace           string
+	Services            []models.Service
+	Networks            []models.DockerNetwork
+	Project             *projectViewData
+	Flash               string
+	MonitorSettings     *models.MonitorSettings
+	NotificationTargets []models.NotificationTarget
+	DiscordTemplate     string
+	SlackTemplate       string
+	ZapierTemplate      string
 }
 
 type projectViewData struct {

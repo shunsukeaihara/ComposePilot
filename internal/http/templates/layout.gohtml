@@ -627,6 +627,59 @@
       color: var(--muted);
       text-align: center;
     }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex: 0 0 auto;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+    .switch-slider {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      background: rgba(148, 163, 184, 0.28);
+      border-radius: 999px;
+      transition: background 120ms ease;
+    }
+    .switch-slider::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 18px;
+      height: 18px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      transition: transform 120ms ease;
+    }
+    .switch input:checked + .switch-slider {
+      background: var(--accent);
+    }
+    .switch input:checked + .switch-slider::before {
+      transform: translateX(20px);
+    }
+    .switch input:focus-visible + .switch-slider {
+      outline: 2px solid rgba(59, 130, 246, 0.5);
+      outline-offset: 2px;
+    }
+    .switch-field {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 14px;
+      color: var(--text);
+      text-transform: none;
+      letter-spacing: normal;
+      margin: 0;
+    }
     .flash {
       padding: 10px 12px;
       border-radius: 10px;
@@ -772,6 +825,8 @@
         {{template "content-project-detail" .}}
       {{else if eq .ContentTemplate "content-networks"}}
         {{template "content-networks" .}}
+      {{else if eq .ContentTemplate "content-monitoring"}}
+        {{template "content-monitoring" .}}
       {{end}}
       </div>
     </div>
@@ -818,6 +873,8 @@
       const navNetworks = document.getElementById('nav-networks');
       if (navHome) navHome.classList.toggle('active', currentPath === '/' || currentPath === '/projects/new');
       if (navNetworks) navNetworks.classList.toggle('active', currentPath === '/settings/networks');
+      const navMonitoring = document.getElementById('nav-monitoring');
+      if (navMonitoring) navMonitoring.classList.toggle('active', currentPath === '/settings/monitoring');
       document.querySelectorAll('[data-project-id]').forEach((node) => {
         const active = currentPath === '/projects/' + node.dataset.projectId;
         node.classList.toggle('active', active);
@@ -1537,6 +1594,7 @@
     <div class="menu-label">Settings</div>
     <div class="menu-children">
       <a id="nav-networks" class="menu-button" href="/settings/networks" hx-get="/settings/networks" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">Networks</a>
+      <a id="nav-monitoring" class="menu-button" href="/settings/monitoring" hx-get="/settings/monitoring" hx-target="#app-main" hx-select="#app-main" hx-swap="outerHTML" hx-push-url="true">Monitoring</a>
     </div>
   </div>
 </nav>

@@ -255,6 +255,10 @@ func (s *Server) resolveWorkDir(req serviceRequest) string {
 	return slugify(req.Name)
 }
 
+func (s *Server) ResolveServiceWorkDir(workDir string) string {
+	return s.serviceWorkDir(workDir)
+}
+
 func (s *Server) serviceWorkDir(workDir string) string {
 	workDir = filepath.Clean(strings.TrimSpace(workDir))
 	if workDir == "." || workDir == "" {
