@@ -36,6 +36,14 @@ func statusForError(err error) int {
 	return http.StatusInternalServerError
 }
 
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 func (s *Server) Run(ctx context.Context) error {
 	httpServer := &http.Server{
 		Addr:              s.cfg.ListenAddr,

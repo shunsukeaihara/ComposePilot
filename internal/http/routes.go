@@ -1,6 +1,7 @@
 package httphandler
 
 func (s *Server) routes() {
+	s.mux.HandleFunc("/health", s.handleHealth)
 	s.mux.HandleFunc("/", s.handleHomePage)
 	s.mux.HandleFunc("/projects/new", s.handleNewProjectPage)
 	s.mux.HandleFunc("/projects/", s.handleProjectPages)
