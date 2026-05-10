@@ -182,6 +182,7 @@ need_cmd systemctl
 ensure_linux_user
 ensure_docker_group_membership
 chown -R "${SERVICE_USER}:${SERVICE_USER}" "$DATA_DIR"
+chown -R "${SERVICE_USER}:${SERVICE_USER}" "$CONFIG_DIR"
 write_linux_service
 chmod 644 "$SERVICE_FILE"
 systemctl daemon-reload
